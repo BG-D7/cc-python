@@ -138,7 +138,7 @@ public class PythonSessionTest {
     }
 
     @Test
-    @DisplayName("Pip and micropip modules compliance")
+    @DisplayName("Pip and micropip modules compliance with requires_dist dependency resolver")
     void testPipModule() {
         Terminal terminal = new Terminal(51, 19, true);
         PythonExecutionBridge bridge = new PythonExecutionBridge();
@@ -147,16 +147,34 @@ public class PythonSessionTest {
         String script = String.join("\n",
             "import pip, micropip",
             "assert hasattr(pip, 'install')",
+            "assert hasattr(pip, 'uninstall')",
             "assert hasattr(pip, 'list_installed')",
             "assert hasattr(micropip, 'install')",
-            "print('PIP_OK')"
+            "assert hasattr(micropip, 'uninstall')",
+            "",
+            "# Test requires_dist parser logic",
+            "assert pip.parse_requirement('MarkupSafe>=2.0') == 'MarkupSafe'",
+            "assert pip.parse_requirement('markdown-it-py>=2.2.0') == 'markdown-it-py'",
+            "assert pip.parse_requirement('Babel>=2.7; extra == \"i18n\"') is None",
+            "assert pip.parse_requirement('ipywidgets<9; extra == \"jupyter\"') is None",
+            "assert pip.parse_requirement('legacy-pkg; python_version < \"3.8\"') is None",
+            "assert pip.parse_requirement('modern-pkg; python_version >= \"3.10\"') == 'modern-pkg'",
+            "",
+            "# Test PEP 503 name normalization",
+            "assert pip.normalize_name('Markdown-It-Py') == 'markdown-it-py'",
+            "assert pip.normalize_name('foo_bar.baz') == 'foo-bar-baz'",
+            "",
+            "# Test built-in module detection",
+            "assert pip.is_installed('requests')",
+            "assert pip.is_installed('sqlite3')",
+            "print('PIP_RESOLVER_OK')"
         );
 
         session.runCode(script, "test_pip.py", List.of(), bridge);
         bridge.handleInitialStep();
 
         String line0 = terminal.getLine(0).toString().trim();
-        assertEquals("PIP_OK", line0);
+        assertEquals("PIP_RESOLVER_OK", line0);
     }
 
     @Test

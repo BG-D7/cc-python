@@ -1,45 +1,168 @@
 # SPDX-FileCopyrightText: 2026 diff
-# Lightweight in-game pip / micropip package installer for ComputerCraft (GraalPy)
+# In-game pip package installer with recursive dependency resolution for ComputerCraft (GraalPy)
 
 import sys
+import re
 import java
 import requests
 
 WheelExtractor = java.type("work.diffdev.kik.python.pip.WheelExtractor")
 
-def install(package_name, target_dir="lib"):
-    package_name = package_name.strip()
-    if not package_name:
-        print("Error: No package name specified.")
+# Known built-in modules that satisfy requirements without needing download
+BUILTIN_MODULES = {
+    "requests", "sqlite3", "websocket", "pil", "pillow",
+    "math", "json", "random", "re", "sys", "os", "time",
+    "datetime", "collections", "itertools", "functools",
+    "pathlib", "logging", "asyncio", "hashlib", "urllib",
+    "io", "string", "struct", "copy", "turtle", "redstone",
+    "term", "cc", "kik"
+}
+
+def normalize_name(name):
+    """Normalize package name according to PEP 503."""
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+def check_python_version_marker(marker_str):
+    """Evaluates PEP 508 python_version markers against current GraalPy version."""
+    m = re.search(r"python_version\s*([<>=!]+)\s*['\"]([0-9.]+)['\"]", marker_str)
+    if m:
+        op, ver = m.groups()
+        cur = sys.version_info[:2]
+        target = tuple(map(int, ver.split(".")[:2]))
+        if op == "<": return cur < target
+        if op == "<=": return cur <= target
+        if op == ">": return cur > target
+        if op == ">=": return cur >= target
+        if op == "==": return cur == target
+        if op == "!=": return cur != target
+    return True
+
+def parse_requirement(req_str):
+    """
+    Parses a PEP 508 requirement string from requires_dist.
+    Returns package name if it should be installed, or None if it is optional/incompatible.
+    """
+    req_str = req_str.strip()
+    if not req_str:
+        return None
+
+    # Handle environment markers after ';'
+    if ";" in req_str:
+        req_part, marker = req_str.split(";", 1)
+        marker = marker.strip()
+        # Skip optional extras (e.g. extra == "jupyter", extra == "dev")
+        if "extra" in marker:
+            return None
+        # Check python_version markers
+        if not check_python_version_marker(marker):
+            return None
+        # Skip non-linux OS markers if specified
+        if "sys_platform == 'win32'" in marker or 'sys_platform == "win32"' in marker:
+            return None
+    else:
+        req_part = req_str
+
+    # Extract clean package name (before comparison operators or brackets)
+    m = re.match(r"^([a-zA-Z0-9_\-.]+)", req_part.strip())
+    if m:
+        pkg_name = m.group(1).strip()
+        return pkg_name
+    return None
+
+def is_installed(package_name, target_dir="lib"):
+    """Checks if a package is already installed or available in built-ins/sys.modules."""
+    norm = normalize_name(package_name)
+    if norm in BUILTIN_MODULES or package_name.lower() in BUILTIN_MODULES:
+        return True
+
+    cc_fs = sys.modules.get("cc_fs")
+    if not cc_fs or not cc_fs.exists(target_dir):
         return False
 
-    print(f"\033[36m[pip]\033[0m Looking up '{package_name}' on PyPI...")
-    api_url = f"https://pypi.org/pypi/{package_name}/json"
+    norm_underscore = norm.replace("-", "_")
+    candidates = [
+        f"{target_dir}/{package_name}",
+        f"{target_dir}/{package_name}.py",
+        f"{target_dir}/{norm}",
+        f"{target_dir}/{norm}.py",
+        f"{target_dir}/{norm_underscore}",
+        f"{target_dir}/{norm_underscore}.py",
+    ]
+    for c in candidates:
+        if cc_fs.exists(c):
+            return True
+    return False
+
+def install(package_spec, target_dir="lib", visited=None, depth=0):
+    """
+    Installs a package and all its pure-Python dependencies from PyPI.
+    Supports package specs with or without version constraints (e.g. 'rich', 'jinja2==3.1.2').
+    """
+    if visited is None:
+        visited = set()
+
+    package_spec = package_spec.strip()
+    if not package_spec:
+        print("Error: Empty package specification.")
+        return False
+
+    # Parse version if specified (e.g. package==1.2.3)
+    target_version = None
+    if "==" in package_spec:
+        raw_name, target_version = package_spec.split("==", 1)
+        raw_name = raw_name.strip()
+        target_version = target_version.strip()
+    else:
+        # Strip any other specifiers (>=, <=, etc.) for lookup
+        m = re.match(r"^([a-zA-Z0-9_\-.]+)", package_spec)
+        raw_name = m.group(1).strip() if m else package_spec
+
+    norm_name = normalize_name(raw_name)
+    indent = "  " * depth
+
+    # Prevent circular recursion
+    if norm_name in visited:
+        return True
+
+    # Check if already installed
+    if is_installed(raw_name, target_dir):
+        print(f"{indent}\033[90mRequirement already satisfied: {raw_name} (in /{target_dir} or built-in)\033[0m")
+        visited.add(norm_name)
+        return True
+
+    print(f"{indent}\033[36m[pip]\033[0m Collecting {raw_name}...")
+    api_url = f"https://pypi.org/pypi/{raw_name}/json"
 
     try:
         resp = requests.get(api_url, timeout=15)
     except Exception as e:
-        print(f"\033[31m[pip] Network error:\033[0m {e}")
+        print(f"{indent}\033[31m[pip] Network error:\033[0m {e}")
         return False
 
     if resp.status_code == 404:
-        print(f"\033[31m[pip] Error:\033[0m Package '{package_name}' not found on PyPI.")
+        print(f"{indent}\033[31m[pip] Error:\033[0m Package '{raw_name}' not found on PyPI.")
         return False
     elif not resp.ok:
-        print(f"\033[31m[pip] Error:\033[0m PyPI returned HTTP status {resp.status_code}")
+        print(f"{indent}\033[31m[pip] Error:\033[0m PyPI returned HTTP status {resp.status_code}")
         return False
 
     try:
         data = resp.json()
     except Exception:
-        print("\033[31m[pip] Error:\033[0m Invalid JSON response from PyPI.")
+        print(f"{indent}\033[31m[pip] Error:\033[0m Invalid JSON response from PyPI.")
         return False
 
     info = data.get("info", {})
-    version = info.get("version", "unknown")
-    urls = data.get("urls", [])
+    available_version = target_version if target_version else info.get("version", "unknown")
 
-    # Find a pure-python wheel (*py3-none-any.whl or *py2.py3-none-any.whl or *none-any.whl)
+    # Select candidate files: either from release files or specific version
+    urls = []
+    if target_version and target_version in data.get("releases", {}):
+        urls = data["releases"][target_version]
+    else:
+        urls = data.get("urls", [])
+
+    # Find pure-python wheel: *py3-none-any.whl or *py2.py3-none-any.whl or *none-any.whl
     selected_wheel = None
     for u in urls:
         fname = u.get("filename", "")
@@ -48,42 +171,93 @@ def install(package_name, target_dir="lib"):
             break
 
     if not selected_wheel:
-        print(f"\033[33m[pip] Warning:\033[0m '{package_name}' {version} does not provide a pure-Python wheel (py3-none-any.whl).")
-        print("Packages requiring native C-compiler extensions cannot be installed on in-game computers.")
+        print(f"{indent}\033[33m[pip] Warning:\033[0m '{raw_name}' {available_version} does not provide a pure-Python wheel (py3-none-any.whl).")
+        print(f"{indent}Packages with native C-compiler extensions cannot be installed on in-game computers.")
         return False
 
+    # Mark as being processed
+    visited.add(norm_name)
+
+    # 1. Parse and install dependencies (requires_dist)
+    requires_dist = info.get("requires_dist", []) or []
+    dependencies = []
+    for req in requires_dist:
+        dep_name = parse_requirement(req)
+        if dep_name and normalize_name(dep_name) not in visited:
+            dependencies.append(dep_name)
+
+    if dependencies:
+        print(f"{indent}\033[36m[pip]\033[0m Resolving dependencies for {raw_name}: {', '.join(dependencies)}")
+        for dep in dependencies:
+            dep_ok = install(dep, target_dir=target_dir, visited=visited, depth=depth + 1)
+            if not dep_ok:
+                print(f"{indent}\033[33m[pip] Note:\033[0m Dependency '{dep}' could not be installed, continuing with '{raw_name}'...")
+
+    # 2. Download and extract package wheel
     wheel_name = selected_wheel.get("filename", "wheel.whl")
     wheel_url = selected_wheel.get("url")
     wheel_size = selected_wheel.get("size", 0)
     wheel_kb = max(1, wheel_size // 1024)
 
-    print(f"\033[36m[pip]\033[0m Downloading {wheel_name} ({wheel_kb} KB)...")
+    print(f"{indent}\033[36m[pip]\033[0m Downloading {wheel_name} ({wheel_kb} KB)...")
     try:
         download_resp = requests.get(wheel_url, timeout=60)
     except Exception as e:
-        print(f"\033[31m[pip] Download failed:\033[0m {e}")
+        print(f"{indent}\033[31m[pip] Download failed:\033[0m {e}")
         return False
 
     if not download_resp.ok:
-        print(f"\033[31m[pip] Download error:\033[0m HTTP {download_resp.status_code}")
+        print(f"{indent}\033[31m[pip] Download error:\033[0m HTTP {download_resp.status_code}")
         return False
 
     raw_bytes = download_resp._raw.getBytes()
     cc_fs = sys.modules.get("cc_fs")
     if not cc_fs:
-        print("\033[31m[pip] Error:\033[0m ComputerCraft filesystem bridge is unavailable.")
+        print(f"{indent}\033[31m[pip] Error:\033[0m ComputerCraft filesystem bridge is unavailable.")
         return False
 
-    print(f"\033[36m[pip]\033[0m Extracting into /{target_dir}...")
+    print(f"{indent}\033[36m[pip]\033[0m Extracting into /{target_dir}...")
     try:
         files_count = WheelExtractor.extract(raw_bytes, target_dir, cc_fs)
-        print(f"\033[32m[pip] Successfully installed {package_name}-{version} ({files_count} files in /{target_dir})\033[0m")
+        print(f"{indent}\033[32m[pip] Successfully installed {raw_name}-{available_version} ({files_count} files in /{target_dir})\033[0m")
         return True
     except Exception as e:
-        print(f"\033[31m[pip] Extraction error:\033[0m {e}")
+        print(f"{indent}\033[31m[pip] Extraction error:\033[0m {e}")
         return False
 
+def uninstall(package_name, target_dir="lib"):
+    """Removes an installed package from /lib."""
+    cc_fs = sys.modules.get("cc_fs")
+    if not cc_fs or not cc_fs.exists(target_dir):
+        print(f"Directory /{target_dir} does not exist.")
+        return False
+
+    norm = normalize_name(package_name)
+    norm_underscore = norm.replace("-", "_")
+    candidates = [
+        f"{target_dir}/{package_name}",
+        f"{target_dir}/{package_name}.py",
+        f"{target_dir}/{norm}",
+        f"{target_dir}/{norm}.py",
+        f"{target_dir}/{norm_underscore}",
+        f"{target_dir}/{norm_underscore}.py",
+    ]
+
+    deleted = False
+    for c in candidates:
+        if cc_fs.exists(c):
+            cc_fs.delete(c)
+            print(f"\033[32m[pip] Successfully uninstalled {c}\033[0m")
+            deleted = True
+            break
+
+    if not deleted:
+        print(f"\033[33m[pip] Package '{package_name}' not found in /{target_dir}.\033[0m")
+        return False
+    return True
+
 def list_installed(target_dir="lib"):
+    """Lists installed packages in /lib."""
     cc_fs = sys.modules.get("cc_fs")
     if not cc_fs or not cc_fs.exists(target_dir):
         print(f"Directory /{target_dir} is empty or does not exist.")
@@ -102,7 +276,8 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     if not args or args[0] in ("-h", "--help", "help"):
         print("Usage:")
-        print("  pip install <package>   Install a pure-Python library from PyPI")
+        print("  pip install <package>   Install a pure-Python library and its dependencies")
+        print("  pip uninstall <package> Remove an installed library from /lib")
         print("  pip list                List packages installed in /lib")
     elif args[0] == "install":
         if len(args) < 2:
@@ -110,6 +285,12 @@ if __name__ == "__main__":
         else:
             for pkg in args[1:]:
                 install(pkg)
+    elif args[0] == "uninstall":
+        if len(args) < 2:
+            print("Usage: pip uninstall <package>")
+        else:
+            for pkg in args[1:]:
+                uninstall(pkg)
     elif args[0] == "list":
         list_installed()
     else:
