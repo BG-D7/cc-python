@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "kik-cc-python",
+  "version": "1.0.0",
+  "name": "KiK CC-Python AIO",
+  "description": "All-in-One full modern Python 3 (GraalPy) interpreter with built-in asyncio, requests, sqlite3, logging, websocket, and CC: Tweaked integration for Kod i Kosmos",
+  "authors": [
+    "diff"
+  ],
+  "contact": {
+    "homepage": "https://diffdev.work"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "work.diffdev.kik.python.KikCCPythonMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.0",
+    "minecraft": ">=26.2 <26.3",
+    "computercraft": ">=1.120.0"
+  }
+}

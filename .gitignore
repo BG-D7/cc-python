@@ -1,0 +1,29 @@
+# Gradle
+.gradle/
+build/
+dist/
+
+# Local libraries and reference checkouts
+.references/
+libs/
+*.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.classpath
+.project
+.settings/
+
+# Runtime logs & temporary caches
+run/
+logs/
+*.log
+.kik-graalpy-cache/
+
+# OS specific
+.DS_Store
+Thumbs.db
