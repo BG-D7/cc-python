@@ -26,6 +26,9 @@ public class KikCCPythonMod {
             Path cacheTmp = Paths.get(System.getProperty("user.home"), ".kik-graalpy-cache", "tmp");
             Files.createDirectories(cacheTmp);
             System.setProperty("org.sqlite.tmpdir", cacheTmp.toString());
+
+            Path serverLibs = Paths.get("config", "kik-cc-python", "libs");
+            Files.createDirectories(serverLibs);
         } catch (Throwable ignored) {}
 
         System.setProperty("polyglotimpl.DisableMultiReleaseCheck", "true");

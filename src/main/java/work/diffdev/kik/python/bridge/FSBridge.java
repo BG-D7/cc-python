@@ -113,11 +113,35 @@ public class FSBridge {
         }
     }
 
+    public byte[] readBytes(String path) {
+        if (fs == null) return null;
+        try (FileSystemWrapper<SeekableByteChannel> wrapper = fs.openForRead(path)) {
+            SeekableByteChannel ch = wrapper.get();
+            ByteBuffer buf = ByteBuffer.allocate((int) ch.size());
+            ch.read(buf);
+            return buf.array();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public boolean writeAll(String path, String content) {
         if (fs == null) return false;
         try (FileSystemWrapper<SeekableByteChannel> wrapper = fs.openForWrite(path, Set.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING))) {
             SeekableByteChannel ch = wrapper.get();
             ByteBuffer buf = ByteBuffer.wrap(content.getBytes(StandardCharsets.UTF_8));
+            ch.write(buf);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public boolean writeBytes(String path, byte[] data) {
+        if (fs == null || data == null) return false;
+        try (FileSystemWrapper<SeekableByteChannel> wrapper = fs.openForWrite(path, Set.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING))) {
+            SeekableByteChannel ch = wrapper.get();
+            ByteBuffer buf = ByteBuffer.wrap(data);
             ch.write(buf);
             return true;
         } catch (Exception e) {

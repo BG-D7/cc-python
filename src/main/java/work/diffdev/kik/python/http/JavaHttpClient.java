@@ -31,7 +31,7 @@ public class JavaHttpClient {
 
         builder.method(method.toUpperCase(), publisher);
 
-        HttpResponse<String> response = CLIENT.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+        HttpResponse<byte[]> response = CLIENT.send(builder.build(), HttpResponse.BodyHandlers.ofByteArray());
         return new JavaResponse(response.statusCode(), response.body(), response.headers().map());
     }
 
@@ -52,7 +52,7 @@ public class JavaHttpClient {
 
         builder.method(method.toUpperCase(), publisher);
 
-        return CLIENT.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofString())
+        return CLIENT.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofByteArray())
             .thenApply(resp -> new JavaResponse(resp.statusCode(), resp.body(), resp.headers().map()));
     }
 
@@ -62,18 +62,6 @@ public class JavaHttpClient {
 
     public static JavaResponse post(String url, String body, Map<String, String> headers) throws Exception {
         return request("POST", url, body, headers, 30);
-    }
-
-    public static JavaResponse put(String url, String body, Map<String, String> headers) throws Exception {
-        return request("PUT", url, body, headers, 30);
-    }
-
-    public static JavaResponse delete(String url, Map<String, String> headers) throws Exception {
-        return request("DELETE", url, null, headers, 30);
-    }
-
-    public static JavaResponse patch(String url, String body, Map<String, String> headers) throws Exception {
-        return request("PATCH", url, body, headers, 30);
     }
 
     public static CompletableFuture<JavaResponse> getAsync(String url, Map<String, String> headers) {

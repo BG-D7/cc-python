@@ -178,12 +178,34 @@ public class PythonSession {
                     "sys.modules['cc'] = cc\n"
                 );
 
-                // Load and inject built-in beginner packages: requests, sqlite3, websocket, PIL
+                // Install ComputerCraft virtual filesystem importer hook
+                loadPythonModule(ctx, "_cc_importer", "/python_modules/_cc_importer.py");
+                ctx.eval("python", "import sys, _cc_importer; _cc_importer.install_hook(sys.modules.get('cc_fs'))\n");
+
+                // Load and inject built-in beginner packages: requests, sqlite3, websocket, PIL, pip, micropip
                 loadPythonModule(ctx, "requests", "/python_modules/requests.py");
                 loadPythonModule(ctx, "sqlite3", "/python_modules/sqlite3.py");
                 loadPythonModule(ctx, "websocket", "/python_modules/websocket.py");
                 loadPythonModule(ctx, "PIL", "/java_pillow.py");
+                loadPythonModule(ctx, "pip", "/python_modules/pip.py");
+                loadPythonModule(ctx, "micropip", "/python_modules/micropip.py");
                 ctx.eval("python", "import sys; sys.modules['PIL.Image'] = sys.modules.get('PIL')\n");
+
+                // Mount server-wide shared libraries from config/kik-cc-python/libs
+                try {
+                    Path serverLibsDir = Paths.get("config", "kik-cc-python", "libs");
+                    if (Files.isDirectory(serverLibsDir)) {
+                        String absLibs = serverLibsDir.toAbsolutePath().toString().replace('\\', '/');
+                        ctx.eval("python", "import sys; sys.path.append('" + absLibs + "')\n");
+                        try (var stream = Files.list(serverLibsDir)) {
+                            stream.filter(p -> p.toString().endsWith(".whl") || p.toString().endsWith(".zip"))
+                                  .forEach(wheel -> {
+                                      String wheelPath = wheel.toAbsolutePath().toString().replace('\\', '/');
+                                      ctx.eval("python", "import sys; sys.path.append('" + wheelPath + "')\n");
+                                  });
+                        }
+                    }
+                } catch (Throwable ignored) {}
 
                 // Setup sys.argv
                 Value sysModule = ctx.eval("python", "import sys; sys");
