@@ -14,7 +14,7 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "work.diffdev.kik.python.KikCCPythonMod"
+      "work.diffdev.kik.python.fabric.KikCCPythonFabricMod"
     ]
   },
   "depends": {

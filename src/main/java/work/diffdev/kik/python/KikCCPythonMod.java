@@ -1,6 +1,5 @@
 package work.diffdev.kik.python;
 
-import net.fabricmc.api.ModInitializer;
 import dan200.computercraft.api.ComputerCraftAPI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,13 +7,18 @@ import org.slf4j.LoggerFactory;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public class KikCCPythonMod implements ModInitializer {
+public class KikCCPythonMod {
     public static final String MOD_ID = "kik-cc-python";
+    public static final String MOD_ID_NEOFORGE = "kik_cc_python";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    private static final AtomicBoolean INITIALIZED = new AtomicBoolean(false);
 
-    @Override
-    public void onInitialize() {
+    public static void init() {
+        if (!INITIALIZED.compareAndSet(false, true)) {
+            return;
+        }
         LOGGER.info("[KiK CC-Python AIO] Initializing modern Python 3 (GraalPy) for CC: Tweaked...");
 
         // Ensure safe tmpdir for native libraries (fixes noexec /tmp on Linux/NixOS)

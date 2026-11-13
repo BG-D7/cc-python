@@ -52,6 +52,13 @@ tasks.processResources {
             "loader_version" to loaderVersion
         )
     }
+
+    filesMatching("META-INF/neoforge.mods.toml") {
+        expand(
+            "version" to project.version,
+            "minecraft_version" to minecraftVersion
+        )
+    }
 }
 
 tasks.withType<JavaCompile>().configureEach {

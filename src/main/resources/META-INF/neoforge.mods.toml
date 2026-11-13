@@ -1,0 +1,28 @@
+modLoader="javafml"
+loaderVersion="[1,)"
+license="LGPL-3.0"
+issueTrackerURL="https://github.com/diffdev/kik-cc-python/issues"
+
+[[mods]]
+modId="kik_cc_python"
+version="${version}"
+displayName="KiK CC: Tweaked Python"
+authors="diff"
+description='''
+Modern Python 3.12 (GraalPy) integration for ComputerCraft: Tweaked.
+All-In-One runtime with stdlib, asyncio, requests, sqlite3, and websocket.
+'''
+
+[[dependencies.kik_cc_python]]
+modId="neoforge"
+type="required"
+versionRange="[1,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.kik_cc_python]]
+modId="computercraft"
+type="required"
+versionRange="[1.120.0,)"
+ordering="AFTER"
+side="BOTH"

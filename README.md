@@ -1,13 +1,14 @@
 # kik-cc-python (Код и Космос: Python для ComputerCraft)
 
 [![Minecraft](https://img.shields.io/badge/Minecraft-26.2-blue.svg)](https://minecraft.net/)
-[![Fabric](https://img.shields.io/badge/Loader-Fabric%200.156.0-green.svg)](https://fabricmc.net/)
+[![Fabric](https://img.shields.io/badge/Loader-Fabric-green.svg)](https://fabricmc.net/)
+[![NeoForge](https://img.shields.io/badge/Loader-NeoForge-blueviolet.svg)](https://neoforged.net/)
 [![ComputerCraft: Tweaked](https://img.shields.io/badge/CC%3A%20Tweaked-1.120.2-orange.svg)](https://tweaked.cc/)
 [![Python](https://img.shields.io/badge/Python-3.12%20(GraalPy)-yellow.svg)](https://www.graalvm.org/python/)
 [![Java](https://img.shields.io/badge/Java-25%20LTS-red.svg)](https://adoptium.net/)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](LICENSE)
 
-**kik-cc-python** — All-In-One (AIO) Fabric-мод для Minecraft 26.2, интегрирующий современный полноценный **Python 3.12 (GraalPy)** в компьютеры и роботы **CC: Tweaked**.
+**kik-cc-python** — All-In-One (AIO) гибридный мод для Minecraft 26.2 (**Fabric & NeoForge**), интегрирующий современный полноценный **Python 3.12 (GraalPy)** в компьютеры и роботы **CC: Tweaked**. Один и тот же JAR-файл поддерживается обоими загрузчиками!
 
 Разработан специально для космического образовательного курса **«Код и Космос»** (KiK).
 
