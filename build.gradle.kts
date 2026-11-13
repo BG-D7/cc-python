@@ -73,6 +73,7 @@ tasks.test {
     }
     systemProperty("polyglotimpl.DisableMultiReleaseCheck", "true")
     systemProperty("org.sqlite.tmpdir", "${System.getProperty("user.home")}/.kik-graalpy-cache/tmp")
+    jvmArgs("--enable-native-access=ALL-UNNAMED", "-Xmx2g", "-XX:+UseParallelGC")
 }
 
 tasks.jar {

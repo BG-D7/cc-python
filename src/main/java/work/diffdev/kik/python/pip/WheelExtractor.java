@@ -3,6 +3,8 @@ package work.diffdev.kik.python.pip;
 import work.diffdev.kik.python.bridge.FSBridge;
 
 import java.io.ByteArrayInputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -18,8 +20,21 @@ public class WheelExtractor {
      * @return Number of files extracted
      */
     public static int extract(byte[] zipBytes, String targetDir, FSBridge fs) {
-        if (zipBytes == null || fs == null) return 0;
-        int count = 0;
+        return extractFiles(zipBytes, targetDir, fs).length;
+    }
+
+    /**
+     * Extracts a .whl (ZIP) file and returns the array of all extracted file paths.
+     * Returns an array (String[]) to avoid generic signature parsing crashes on JVM 25.
+     *
+     * @param zipBytes  Raw binary bytes of the .whl or .zip file
+     * @param targetDir Destination directory inside CC virtual fs (e.g. "lib")
+     * @param fs        ComputerCraft FileSystem bridge
+     * @return Array of created file paths
+     */
+    public static String[] extractFiles(byte[] zipBytes, String targetDir, FSBridge fs) {
+        List<String> files = new ArrayList<>();
+        if (zipBytes == null || fs == null) return new String[0];
         String cleanTarget = (targetDir == null || targetDir.isEmpty() || targetDir.equals("/")) ? "" : targetDir.replaceAll("^/+", "").replaceAll("/+$", "");
 
         try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
@@ -43,13 +58,13 @@ public class WheelExtractor {
                         fs.makeDir(destPath.substring(0, lastSlash));
                     }
                     if (fs.writeBytes(destPath, data)) {
-                        count++;
+                        files.add(destPath);
                     }
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return count;
+        return files.toArray(new String[0]);
     }
 }

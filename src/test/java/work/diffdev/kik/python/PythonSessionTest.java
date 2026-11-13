@@ -178,6 +178,48 @@ public class PythonSessionTest {
     }
 
     @Test
+    @DisplayName("Pip uninstall removes package and cleans manifest")
+    void testPipUninstall() throws Exception {
+        Path tempDir = Files.createTempDirectory("cc-pip-test");
+        var mount = new dan200.computercraft.core.filesystem.WritableFileMount(tempDir.toFile(), 10_000_000);
+        var fs = new dan200.computercraft.core.filesystem.FileSystem("hdd", mount);
+
+        // Pre-create simulated installed package and manifest on mounted disk
+        Path roverDir = tempDir.resolve("lib/my_rover");
+        Path instDir = tempDir.resolve("lib/.installed");
+        Files.createDirectories(roverDir);
+        Files.createDirectories(instDir);
+        Files.writeString(roverDir.resolve("core.py"), "def drive(): return 1\n");
+        Files.writeString(instDir.resolve("my-rover.manifest"), "lib/my_rover/core.py\n");
+
+        Terminal terminal = new Terminal(51, 19, true);
+        PythonExecutionBridge bridge = new PythonExecutionBridge();
+        PythonSession session = new PythonSession(null, null, terminal, fs, null, null, null);
+
+        String script = String.join("\n",
+            "import pip",
+            "assert pip.is_installed('my-rover')",
+            "res = pip.uninstall('my-rover')",
+            "assert res == True",
+            "assert not pip.is_installed('my-rover')",
+            "print('UNINSTALL_OK')"
+        );
+
+        session.runCode(script, "test_uninstall.py", List.of(), bridge);
+        bridge.handleInitialStep();
+
+        StringBuilder fullOutput = new StringBuilder();
+        for (int i = 0; i < terminal.getHeight(); i++) {
+            fullOutput.append(terminal.getLine(i).toString()).append("\n");
+        }
+        String outStr = fullOutput.toString();
+        assertTrue(outStr.contains("Successfully uninstalled"));
+        assertTrue(outStr.contains("UNINSTALL_OK"));
+        assertFalse(fs.exists("lib/my_rover/core.py"));
+        assertFalse(fs.exists("lib/.installed/my-rover.manifest"));
+    }
+
+    @Test
     @DisplayName("Virtual CC filesystem module import via CCPathFinder")
     void testCCPathFinderImport() throws Exception {
         Path tempDir = Files.createTempDirectory("cc-fs-test");
