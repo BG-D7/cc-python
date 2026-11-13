@@ -220,6 +220,53 @@ public class PythonSessionTest {
     }
 
     @Test
+    @DisplayName("Pip requirements file (-r) parsing and installation")
+    void testPipRequirementsFile() throws Exception {
+        Path tempDir = Files.createTempDirectory("cc-reqs-test");
+        var mount = new dan200.computercraft.core.filesystem.WritableFileMount(tempDir.toFile(), 10_000_000);
+        var fs = new dan200.computercraft.core.filesystem.FileSystem("hdd", mount);
+
+        // Pre-create requirements.txt in virtual root
+        Path reqsFile = tempDir.resolve("requirements.txt");
+        String reqsContent = String.join("\n",
+            "# Core dependencies test",
+            "requests >= 2.0 # built-in satisfied",
+            "sqlite3 # built-in",
+            "",
+            "# Should be skipped due to incompatible python version marker:",
+            "fake_incompatible_pkg == 9.9.9; python_version < '3.0'"
+        );
+        Files.writeString(reqsFile, reqsContent);
+
+        Terminal terminal = new Terminal(51, 19, true);
+        PythonExecutionBridge bridge = new PythonExecutionBridge();
+        PythonSession session = new PythonSession(null, null, terminal, fs, null, null, null);
+
+        String script = String.join("\n",
+            "import pip, micropip",
+            "assert hasattr(pip, 'install_requirements')",
+            "assert hasattr(micropip, 'install_requirements')",
+            "res1 = pip.install_requirements('requirements.txt')",
+            "assert res1 == True",
+            "res2 = pip.install('-r requirements.txt')",
+            "assert res2 == True",
+            "print('REQS_OK')"
+        );
+
+        session.runCode(script, "test_reqs.py", List.of(), bridge);
+        bridge.handleInitialStep();
+
+        StringBuilder fullOutput = new StringBuilder();
+        for (int i = 0; i < terminal.getHeight(); i++) {
+            fullOutput.append(terminal.getLine(i).toString()).append("\n");
+        }
+        String outStr = fullOutput.toString();
+        assertTrue(outStr.contains("Reading requirements from 'requirements.txt'"));
+        assertTrue(outStr.contains("Skipping fake_incompatible_pkg"));
+        assertTrue(outStr.contains("REQS_OK"));
+    }
+
+    @Test
     @DisplayName("Virtual CC filesystem module import via CCPathFinder")
     void testCCPathFinderImport() throws Exception {
         Path tempDir = Files.createTempDirectory("cc-fs-test");

@@ -95,10 +95,85 @@ def is_installed(package_name, target_dir="lib"):
             return True
     return False
 
+def read_text_file(file_path):
+    """Reads a text file from CC filesystem or local host filesystem."""
+    cleaned = file_path.strip().lstrip("/")
+    if cleaned.startswith("./"):
+        cleaned = cleaned[2:]
+
+    cc_fs = sys.modules.get("cc_fs")
+    if cc_fs:
+        for candidate in (file_path, cleaned, f"/{cleaned}"):
+            try:
+                if cc_fs.exists(candidate) and not cc_fs.isDir(candidate):
+                    content = cc_fs.readAll(candidate)
+                    if content is not None:
+                        return content
+            except Exception:
+                pass
+
+    # Fallback to standard Python file opening
+    for candidate in (file_path, cleaned):
+        try:
+            with open(candidate, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception:
+            pass
+    return None
+
+def install_requirements(req_file, target_dir="lib", visited=None, depth=0):
+    """
+    Installs packages listed in a requirements.txt file.
+    Supports comments (#), inline comments, empty lines, and recursive -r directives.
+    """
+    if visited is None:
+        visited = set()
+
+    content = read_text_file(req_file)
+    if content is None:
+        print(f"\033[31m[pip] Error:\033[0m Could not open requirements file '{req_file}'")
+        return False
+
+    indent = "  " * depth
+    print(f"{indent}\033[36m[pip]\033[0m Reading requirements from '{req_file}'...")
+
+    success = True
+    lines = content.splitlines()
+    for line in lines:
+        line = line.strip()
+        # Skip empty lines
+        if not line:
+            continue
+        # Skip comment lines
+        if line.startswith("#"):
+            continue
+        # Strip inline comments (e.g. "jinja2>=3.0 # template engine")
+        if " #" in line:
+            line = line.split(" #", 1)[0].strip()
+        elif "\t#" in line:
+            line = line.split("\t#", 1)[0].strip()
+
+        if not line:
+            continue
+
+        # Handle nested -r / --requirement directives
+        if line.startswith("-r ") or line.startswith("--requirement "):
+            nested_file = line.split(None, 1)[1].strip()
+            ok = install_requirements(nested_file, target_dir=target_dir, visited=visited, depth=depth + 1)
+            if not ok:
+                success = False
+        else:
+            ok = install(line, target_dir=target_dir, visited=visited, depth=depth)
+            if not ok:
+                success = False
+
+    return success
+
 def install(package_spec, target_dir="lib", visited=None, depth=0):
     """
     Installs a package and all its pure-Python dependencies from PyPI.
-    Supports package specs with version constraints (e.g. 'rich', 'jinja2==3.1.2').
+    Supports package specs with version constraints (e.g. 'rich', 'jinja2==3.1.2')
+    and requirements files via '-r <file>'.
     """
     if visited is None:
         visited = set()
@@ -107,6 +182,26 @@ def install(package_spec, target_dir="lib", visited=None, depth=0):
     if not package_spec:
         print("Error: Empty package specification.")
         return False
+
+    # Check if invoked as -r <file>
+    if package_spec.startswith("-r ") or package_spec.startswith("--requirement "):
+        req_file = package_spec.split(None, 1)[1].strip()
+        return install_requirements(req_file, target_dir=target_dir, visited=visited, depth=depth)
+    if package_spec in ("-r", "--requirement") and target_dir and target_dir != "lib":
+        return install_requirements(target_dir, target_dir="lib", visited=visited, depth=depth)
+
+    indent = "  " * depth
+
+    # Evaluate PEP 508 environment markers if present (e.g. "pkg==1.0; python_version < '3.13'")
+    if ";" in package_spec:
+        spec_part, marker = package_spec.split(";", 1)
+        marker = marker.strip()
+        if "extra" in marker or not check_python_version_marker(marker):
+            print(f"{indent}\033[90mSkipping {package_spec}: marker evaluation does not match environment\033[0m")
+            return True
+        if "sys_platform == 'win32'" in marker or 'sys_platform == "win32"' in marker:
+            return True
+        package_spec = spec_part.strip()
 
     # Parse version if specified (e.g. package==1.2.3)
     target_version = None
@@ -340,14 +435,38 @@ if __name__ == "__main__":
         print("Usage:")
         print("  pip install <package>   Install a pure-Python library and its dependencies")
         print("  pip install <pkg>==<v>  Install a specific version of a package")
+        print("  pip install -r <file>   Install packages from a requirements file")
+        print("  pip -r <file>           Shorthand to install from a requirements file")
         print("  pip uninstall <package> Remove an installed library from /lib")
         print("  pip list                List packages installed in /lib")
+    elif args[0] in ("-r", "--requirement"):
+        if len(args) < 2:
+            print("Usage: pip -r <requirements.txt>")
+        else:
+            for req_file in args[1:]:
+                install_requirements(req_file)
     elif args[0] == "install":
         if len(args) < 2:
-            print("Usage: pip install <package>")
+            print("Usage: pip install <package> or pip install -r <file>")
         else:
-            for pkg in args[1:]:
-                install(pkg)
+            i = 1
+            while i < len(args):
+                arg = args[i]
+                if arg in ("-r", "--requirement"):
+                    if i + 1 < len(args):
+                        i += 1
+                        install_requirements(args[i])
+                    else:
+                        print("Error: -r option requires a file argument")
+                elif arg.startswith("-r"):
+                    req_file = arg[2:].strip()
+                    if req_file:
+                        install_requirements(req_file)
+                    else:
+                        print("Error: -r option requires a file argument")
+                else:
+                    install(arg)
+                i += 1
     elif args[0] == "uninstall":
         if len(args) < 2:
             print("Usage: pip uninstall <package>")
