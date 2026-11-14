@@ -126,7 +126,7 @@ class PyRunTest {
                 return new Object[] { true, ref(1, "table", List.of("forward", "getFuelLevel"), Map.of()) };
             }
             if (path.equals("colors")) {
-                return new Object[] { true, ref(2, "table", List.of("combine"), Map.of("red", 16384.0, "white", 1.0)) };
+                return new Object[] { true, ref(2, "table", List.of("combine"), Map.of("red", 16384.0, "white", 1.0, "lightBlue", 512.0)) };
             }
             return new Object[] { true, null };
         }
@@ -236,6 +236,50 @@ class PyRunTest {
         assertTrue(r.out().contains("6\n"), r.out());
         assertTrue(r.out().contains("'щ'"), r.out());
         assertEquals(8, r.reads());
+    }
+
+    @Test
+    void tracebackOnCyrillicLine() throws Exception {
+        Result r = new Driver().run(PyRun.Mode.CODE, "x = 1\nprint('км:', 1 + 'два')\n");
+        assertFalse(r.ok());
+        assertTrue(r.printed());
+        assertTrue(r.out().contains("line 2"), r.out());
+        assertTrue(r.out().contains("print('км:', 1 + 'два')"), r.out());
+        assertTrue(r.out().contains("TypeError"), r.out());
+        assertTrue(r.error().startsWith("TypeError"), r.error());
+    }
+
+    @Test
+    void replMultiLineBlocks() throws Exception {
+        Driver d = new Driver();
+        for (String line : new String[] {
+            "def fuel(km):", "    a = km * 2", "    return a + km", "", "fuel(12)",
+            "for i in range(2):", "    print('i', i)", "", "exit()" }) {
+            d.input.add(line);
+        }
+        Result r = d.run(PyRun.Mode.REPL, "");
+        assertTrue(r.ok(), r.error() + "\n" + r.out());
+        assertFalse(r.out().contains("Error"), r.out());
+        assertTrue(r.out().contains("36\n"), r.out());
+        assertTrue(r.out().contains("i 0\ni 1\n"), r.out());
+    }
+
+    @Test
+    void javaIsHiddenInSandbox() throws Exception {
+        Result r = new Driver().run(PyRun.Mode.CODE, """
+            try:
+                import java
+                print('imported')
+            except ImportError as e:
+                print('hidden', 'sandbox' in str(e))
+            """);
+        assertTrue(r.ok(), r.error() + "\n" + r.out());
+        assertEquals("hidden True\n", r.out());
+
+        Result r2 = new Driver().run(PyRun.Mode.CODE, "import java\n");
+        assertFalse(r2.ok());
+        assertTrue(r2.out().contains("ModuleNotFoundError"), r2.out());
+        assertFalse(r2.out().contains("<kik>"), r2.out());
     }
 
     @Test
@@ -374,9 +418,10 @@ class PyRunTest {
             import turtle, colors
             from cc import lua
             print(turtle.forward(), turtle.get_fuel_level(), colors.combine(colors.red, colors.white), lua.eval('return 1'))
+            print(colors.light_blue == colors.lightBlue == 512)
             """);
         assertTrue(r.ok(), r.error() + "\n" + r.out());
-        assertEquals("True 80 16385 42\n", r.out());
+        assertEquals("True 80 16385 42\nTrue\n", r.out());
     }
 
     @Test

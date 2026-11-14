@@ -179,6 +179,9 @@ class LuaRef:
             for k, v in fields.items():
                 if isinstance(k, str) and k not in d:
                     d[k] = v
+                    alias = _snake(k)
+                    if alias != k and alias not in d and alias not in fields:
+                        d[alias] = v
 
     def __call__(self, *args):
         if self._kind != "f":
@@ -303,6 +306,9 @@ def _make_kik(name):
 
 class _CCFinder(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
+        if fullname == "java" and _N is not None and _N.sandboxed():
+            raise ModuleNotFoundError("No module named 'java' (Java access is off: the Python sandbox is on)",
+                                      name=fullname)
         if fullname == "cc":
             factory = _make_cc
         elif fullname == "cc.lua":
@@ -423,8 +429,64 @@ def _print_exception(exc):
     tb = exc.__traceback__
     while tb is not None and tb.tb_frame.f_code.co_filename == "<kik>":
         tb = tb.tb_next
-    te = traceback.TracebackException(type(exc), exc, tb, compact=True)
-    sys.stderr.write("".join(te.format()))
+    try:
+        te = traceback.TracebackException(type(exc), exc, tb, compact=True)
+        _hide_internal_frames(te)
+        text = "".join(te.format())
+    except Exception:
+        # Never lose the program's own error because formatting it failed: fall back to a plain traceback.
+        lines = ["Traceback (most recent call last):\n"]
+        while tb is not None:
+            code = tb.tb_frame.f_code
+            lines.append('  File "%s", line %s, in %s\n' % (code.co_filename, tb.tb_lineno, code.co_name))
+            src = linecache.getline(code.co_filename, tb.tb_lineno).strip()
+            if src:
+                lines.append("    %s\n" % src)
+            tb = tb.tb_next
+        lines.append(_summary(exc) + "\n")
+        text = "".join(lines)
+    sys.stderr.write(text)
+
+
+def _hide_internal_frames(te, seen=None):
+    """Drop frames of this boot module (import hooks, wrappers) anywhere in the traceback and its chain."""
+    seen = set() if seen is None else seen
+    while te is not None and id(te) not in seen:
+        seen.add(id(te))
+        te.stack[:] = [f for f in te.stack if f.filename != "<kik>"]
+        for sub in getattr(te, "exceptions", None) or ():
+            _hide_internal_frames(sub, seen)
+        if te.__cause__ is not None:
+            _hide_internal_frames(te.__cause__, seen)
+        te = te.__context__ if not te.__suppress_context__ else None
+
+
+# East Asian wide/fullwidth ranges, for terminals that render them two cells wide.
+_WIDE = ((0x1100, 0x115F), (0x2E80, 0x303E), (0x3041, 0x33FF), (0x3400, 0x4DBF), (0x4E00, 0x9FFF),
+         (0xA000, 0xA4CF), (0xAC00, 0xD7A3), (0xF900, 0xFAFF), (0xFE30, 0xFE4F), (0x1F300, 0x1F64F),
+         (0x1F900, 0x1F9FF), (0x20000, 0x3FFFD))
+
+
+def _east_asian_width(ch):
+    o = ord(ch)
+    if 0xFF01 <= o <= 0xFF60 or 0xFFE0 <= o <= 0xFFE6:
+        return "F"
+    if 0xFF61 <= o <= 0xFFDC or 0xFFE8 <= o <= 0xFFEE:
+        return "H"
+    for lo, hi in _WIDE:
+        if lo <= o <= hi:
+            return "W"
+    return "Na" if o < 0x7F else "N"
+
+
+def _patch_unicodedata():
+    """GraalPy delegates east_asian_width to a native module that the sandbox cannot load; traceback needs it for
+    any source line with non-ASCII text (Cyrillic). Use a pure-Python table instead."""
+    import unicodedata
+    try:
+        unicodedata.east_asian_width("ж")
+    except Exception:
+        unicodedata.east_asian_width = _east_asian_width
 
 
 def _summary(exc):
@@ -532,6 +594,11 @@ class _Session:
             return True
         if code is None:
             return True
+        # Like CPython's REPL, a compound statement (def/if/for/class/@decorator ...) ends with an empty line,
+        # whatever the compiler thinks of the lines so far.
+        first = self.buf[0].split("#", 1)[0].rstrip()
+        if line.strip() and (first.endswith(":") or first.lstrip().startswith("@")):
+            return True
         self.buf = []
         _remember_source("<stdin>", source + "\n")
         try:
@@ -581,6 +648,9 @@ class _BootApi:
         # GraalPy's hook wraps "pip" for its bundled pip; ours is our own module, and the wrapper breaks `-m pip`.
         sys.meta_path[:] = [f for f in sys.meta_path if getattr(f, "__name__", "") != "PipImportHook"]
         sys.meta_path.insert(0, _CCFinder())
+        if native.sandboxed():
+            sys.modules.pop("java", None)
+        _patch_unicodedata()
         _install_path_hook()
         _time.sleep = _sleep
 
