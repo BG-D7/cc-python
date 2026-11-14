@@ -2,10 +2,10 @@
 """A subset of the `websocket-client` library for ComputerCraft.
 
 Connections follow the server's CC: Tweaked HTTP rules and websocket message size limit, unless the server overrides
-them in the kik-cc-python config.
+them in the CC: Python config.
 """
 
-import _kik
+import _ccpy
 
 __all__ = ["create_connection", "WebSocket", "WebSocketApp", "WebSocketException", "WebSocketTimeoutException",
            "WebSocketConnectionClosedException", "WebSocketBadStatusException", "ABNF"]
@@ -64,7 +64,7 @@ class WebSocket:
     def connect(self, url, header=None, timeout=None, **options):
         if timeout is not None:
             self.timeout = timeout
-        ws = _kik._native.websocket(url, _headers(header), float(self.timeout or 0))
+        ws = _ccpy._native.websocket(url, _headers(header), float(self.timeout or 0))
         err = ws.error()
         if err is not None:
             if err == "Timed out":

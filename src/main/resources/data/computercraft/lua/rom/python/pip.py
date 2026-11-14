@@ -310,7 +310,7 @@ def _write_wheel(content, wheel_name):
             written.append(name)
         if dist_info is None:
             raise PipError("wheel %s has no .dist-info" % wheel_name)
-        for meta, text in (("INSTALLER", "kik-pip\n"), ("RECORD", None)):
+        for meta, text in (("INSTALLER", "ccpython-pip\n"), ("RECORD", None)):
             path = "%s/%s" % (dist_info, meta)
             written.append(path)
             if text is None:
@@ -495,7 +495,7 @@ def main(argv=None):
         return 0
     cmd, rest = args[0], args[1:]
     if cmd in ("-V", "--version"):
-        print("pip (KiK CC-Python, pure-Python wheels from PyPI) into %s" % SITE)
+        print("pip (CC: Python, pure-Python wheels from PyPI) into %s" % SITE)
         return 0
     if cmd in ("-r", "--requirement"):
         cmd, rest = "install", args

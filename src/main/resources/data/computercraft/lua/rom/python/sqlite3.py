@@ -8,7 +8,7 @@ Changes are written to that file on commit, or after every statement in autocomm
 import datetime as _datetime
 import re as _re
 
-import _kik
+import _ccpy
 
 apilevel = "2.0"
 threadsafety = 1
@@ -187,7 +187,7 @@ class Cursor:
         if r[0] != "ok":
             _raise(r)
         conn._note(sql)
-        cols, rows = _kik._dec(list(r[1]))
+        cols, rows = _ccpy._dec(list(r[1]))
         self.rowcount = int(r[2])
         if r[3]:
             self.lastrowid = int(r[3])
@@ -291,7 +291,7 @@ class Connection:
         if uri and database.startswith("file:"):
             database = database[5:].split("?", 1)[0] or ":memory:"
         self._db = None
-        db = _kik._native.sqlite_open(database)
+        db = _ccpy._native.sqlite_open(database)
         err = db.error()
         if err is not None:
             raise OperationalError(err)

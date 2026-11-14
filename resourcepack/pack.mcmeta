@@ -1,0 +1,9 @@
+{
+  "pack": {
+    "pack_format": 63,
+    "supported_formats": { "min_inclusive": 15, "max_inclusive": 1000 },
+    "min_format": [15, 0],
+    "max_format": [1000, 0],
+    "description": "CC: Python — Cyrillic (CP1251) terminal font for CC: Tweaked"
+  }
+}

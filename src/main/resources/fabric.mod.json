@@ -1,20 +1,22 @@
 {
   "schemaVersion": 1,
-  "id": "kik-cc-python",
+  "id": "ccpython",
   "version": "${version}",
-  "name": "KiK CC-Python AIO",
+  "name": "CC: Python",
   "description": "Python 3.13 (GraalPy) for CC: Tweaked computers and turtles: sandboxed, with requests, websocket and sqlite3 that follow CC's rules. Self-contained, no other mods needed.",
   "authors": [
     "diff"
   ],
   "contact": {
-    "homepage": "https://diffdev.work"
+    "homepage": "https://github.com/BG-D7/cc-python",
+    "sources": "https://github.com/BG-D7/cc-python",
+    "issues": "https://github.com/BG-D7/cc-python/issues"
   },
   "license": "LGPL-3.0-only",
   "environment": "*",
   "entrypoints": {
     "main": [
-      "work.diffdev.kik.python.fabric.KikCCPythonFabricMod"
+      "work.diffdev.ccpython.fabric.CCPythonFabricMod"
     ]
   },
   "depends": {

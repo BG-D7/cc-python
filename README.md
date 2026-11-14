@@ -1,4 +1,4 @@
-# kik-cc-python (Код и Космос: Python для ComputerCraft)
+# CC: Python
 
 [![Minecraft](https://img.shields.io/badge/Minecraft-26.2-blue.svg)](https://minecraft.net/)
 [![Fabric](https://img.shields.io/badge/Loader-Fabric-green.svg)](https://fabricmc.net/)
@@ -7,12 +7,14 @@
 [![Python](https://img.shields.io/badge/Python-3.13%20(GraalPy)-yellow.svg)](https://www.graalvm.org/python/)
 [![Java](https://img.shields.io/badge/Java-25%20LTS-red.svg)](https://adoptium.net/)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](LICENSE)
+[![CI](https://github.com/BG-D7/cc-python/actions/workflows/build.yml/badge.svg)](https://github.com/BG-D7/cc-python/actions/workflows/build.yml)
 
-**kik-cc-python** добавляет в компьютеры и черепахи **CC: Tweaked** второй язык — **Python 3.13** (GraalPy 25.5, ежемесячная линия GraalVM).
+**CC: Python** добавляет в компьютеры и черепахи **CC: Tweaked** второй язык — **Python 3.13** (GraalPy 25.5).
 Один гибридный JAR для Minecraft 26.2 работает и на **Fabric**, и на **NeoForge**. Мод самостоятельный: GraalPy,
 стандартная библиотека и SQLite лежат внутри JAR. Других Python-модов и установленного Python не нужно.
 
-Сделан для образовательного курса **«Код и Космос»** (KiK), но годится для любого сервера с CC: Tweaked.
+Мод вырос из авторского курса программирования на CC: Tweaked «Код и Космос» и рассчитан на учебные сервера:
+песочница, понятные ошибки, кириллица.
 
 ---
 
@@ -32,9 +34,55 @@
 - **Импорт из папки скрипта**, из `/lib/python`, из пакетов, поставленных `pip`, и из общей серверной папки.
 - **Понятные ошибки.** Traceback с номерами строк, печатается один раз.
 - **Кириллица везде:** вывод, ввод, аргументы, исходники в UTF-8 или CP1251, строки из Lua. Терминал работает
-  в кодировке шрифта kik-pack (CP1251).
+  в CP1251; кириллический шрифт для клиентов — отдельный [ресурспак](#кириллический-шрифт).
 - **`pip install`** ставит pure-Python пакеты (wheel `py3-none-any`) с PyPI с зависимостями и маркерами PEP 508.
   Пакеты ставятся на диск компьютера.
+
+---
+
+## Как это выглядит
+
+| | |
+|---|---|
+| ![REPL](docs/images/1-repl.png) | ![Скрипт с цветами](docs/images/2-script.png) |
+| **REPL**: переменные между строками, эхо выражений, многострочные блоки | **Скрипт** с аргументами и цветом через `term`/`colors` |
+| ![Traceback](docs/images/3-traceback.png) | ![Ctrl+T](docs/images/4-ctrl-t.png) |
+| **Traceback** с номерами строк и указателями, один раз | **Ctrl+T** останавливает даже `while True: pass` |
+| ![pip](docs/images/5-pip.png) | ![sqlite и requests](docs/images/6-sqlite-requests.png) |
+| **`pip install`** pure-Python пакетов на диск компьютера | **`sqlite3`** на диске компьютера и **`requests`** по правилам CC |
+| ![Lua вызывает Python](docs/images/7-lua-calls-python.png) | ![Песочница](docs/images/8-sandbox.png) |
+| **Lua → Python**: `python.eval` возвращает таблицы | **Песочница**: только диск компьютера, без Java |
+
+<sub>Сцены выполнены на настоящем расширенном компьютере CC: Tweaked (сервер Fabric 26.2). Содержимое терминала
+снято через `window.getLine` и отрисовано [кириллическим шрифтом](#кириллический-шрифт) и рамкой CC.</sub>
+
+---
+
+## Установка
+
+1. Сервер или клиент Minecraft **26.2** на **Java 25** с **Fabric** или **NeoForge** и **CC: Tweaked 1.120.2**.
+2. Положить `cc-python-<версия>-aio.jar` в `mods/`. Это единственный файл: GraalPy, stdlib и SQLite внутри.
+3. На первом запуске рантайм (около 25 МБ) распаковывается в `~/.ccpython-cache/`. Дальше `python` доступен
+   на всех компьютерах и черепахах.
+
+Мод нужен только на сервере (в одиночной игре — у клиента). Игрокам на сервер ставить его не нужно.
+
+### Кириллический шрифт
+
+Штатный шрифт CC не содержит кириллицы. Ресурспак `cc-python-cyrillic-<версия>.zip` (папка
+[`resourcepack/`](resourcepack/)) заменяет шрифт терминала на вариант с кириллицей в позициях CP1251 — той кодировке,
+в которой мод по умолчанию пишет в терминал (`text.encoding = cp1251`).
+
+- Сервер может раздавать его всем игрокам сам: `resource-pack=<URL zip>` и `resource-pack-sha1=<sha1>` в
+  `server.properties`. Клиентам ничего ставить не нужно.
+- Или каждый игрок кладёт zip в `resourcepacks/`.
+- Если кириллица не нужна, поставьте `text.encoding = latin1`: это кодировка штатного шрифта CC.
+
+Шрифт выводит кириллицу. Чтобы набирать её с клавиатуры прямо в CC, нужен ещё драйвер раскладки на Lua, например из
+[CCCyrillic](https://modrinth.com/resourcepack/cccyrillic).
+
+Шрифт — производная от шрифта CC: Tweaked с кириллическими глифами из CCCyrillic (sashafiesta) и распространяется
+под ComputerCraft Public License, отдельно от мода: [resourcepack/CREDITS.md](resourcepack/CREDITS.md).
 
 ---
 
@@ -111,14 +159,14 @@ print(python.version(), python.sandboxed())
 - Стандартная библиотека Python 3.13 без C-расширений: `json`, `re`, `math`, `random`, `datetime`,
   `collections`, `itertools`, `asyncio`, `dataclasses`, `logging`, `pathlib`, `zipfile` и т. д.
 
-Общие для всего сервера модули и пакеты кладутся в `config/kik-cc-python/libs/`. В Python эта папка видна как
+Общие для всего сервера модули и пакеты кладутся в `config/ccpython/libs/`. В Python эта папка видна как
 `/rom/python-libs` и не расходует диски компьютеров.
 
 ---
 
 ## Конфигурация
 
-Файл `config/kik-cc-python/config.properties` создаётся при первом запуске. Изменения применяются без
+Файл `config/ccpython/config.properties` создаётся при первом запуске. Изменения применяются без
 перезапуска сервера: к новым запускам скриптов.
 
 | Ключ | По умолчанию | Смысл |
@@ -127,14 +175,14 @@ print(python.version(), python.sandboxed())
 | `http.enabled` | `inherit` | `requests` вкл/выкл; `inherit` = `http.enabled` из конфига CC |
 | `websocket.enabled` | `inherit` | То же для `websocket` |
 | `http.rules` | `inherit` | Свои правила вместо правил CC: `action host[:port]` через `;`, первое совпадение побеждает. Пример: `deny $private; allow api.example.com; deny *` |
-| `text.encoding` | `cp1251` | Кодировка строк Lua и шрифта: `cp1251` (kik-pack), `latin1` (штатный шрифт CC), `utf-8` |
+| `text.encoding` | `cp1251` | Кодировка строк Lua и шрифта: `cp1251` ([кириллический шрифт](#кириллический-шрифт)), `latin1` (штатный шрифт CC), `utf-8` |
 | `limits.maxRunSeconds` | `0` | Лимит времени одного запуска, с (0 = нет; REPL не ограничивается) |
 | `limits.terminateGraceMs` | `1500` | Сколько ждать реакции на Ctrl+T перед принудительной остановкой |
 | `limits.maxSessions` / `limits.maxSessionsPerComputer` | `32` / `4` | Одновременные скрипты на сервер / на компьютер |
 | `limits.maxEventQueue` | `256` | Очередь событий скрипта (как у CC) |
 | `performance.prewarm` | `true` | Распаковать рантайм и прогреть интерпретатор при старте сервера |
 
-Рантайм GraalPy (около 25 МБ) распаковывается один раз в `~/.kik-graalpy-cache/graalpy-home/<хеш>/`.
+Рантайм GraalPy (около 25 МБ) распаковывается один раз в `~/.ccpython-cache/graalpy-home/<хеш>/`.
 
 ---
 
@@ -155,8 +203,8 @@ print(python.version(), python.sandboxed())
 
 ## Сборка и тесты
 
-Нужен **JDK 25**. CC: Tweaked и NeoForge подключаются как `compileOnly` из `libs/`. GraalPy и sqlite-jdbc
-берутся из Maven.
+Нужен **JDK 25**, остальное Gradle скачивает сам: CC: Tweaked и NeoForge (`compileOnly`) из их Maven-репозиториев,
+GraalPy и sqlite-jdbc из Maven Central.
 
 GraalPy идёт по ежемесячной линии GraalVM (25.1, 25.2, …; каждый релиз заменяет предыдущий). Версия задаётся в
 `gradle.properties` (`graalpy_version`). Пути рантайма (`lib/graalpyA.B`, `lib/pythonX.Y`) и баннер берутся из самого
@@ -167,9 +215,12 @@ GraalPy, так что для обновления хватает поменят
 внутренний assert интерпретатора срабатывает при Ctrl+T (`Context.interrupt`), без `-ea` всё работает.
 
 ```bash
-./gradlew packageAioJar        # build/libs/kik-cc-python-<версия>-aio.jar (~100 МБ, всё внутри)
+./gradlew packageAioJar        # build/libs/cc-python-<версия>-aio.jar (~105 МБ, всё внутри)
+./gradlew packageResourcePack  # build/libs/cc-python-cyrillic-<версия>.zip
 ./gradlew cleanTest test       # JUnit
 ```
+
+GitHub Actions собирает мод и ресурспак и прогоняет JUnit на каждый push в `main`; файлы лежат в артефактах сборки.
 
 **JUnit** (`PyRunTest`) запускает настоящий GraalPy через Java-заменитель Lua-драйвера и настоящую
 `FileSystem` CC на временной папке. Покрыты:
@@ -199,5 +250,8 @@ GraalPy, так что для обновления хватает поменят
 
 ## Лицензия
 
-**GNU LGPL v3**, см. [LICENSE](LICENSE). CC: Tweaked распространяется под ComputerCraft Public License,
-GraalVM/GraalPy/Truffle под Universal Permissive License (UPL), sqlite-jdbc под Apache 2.0.
+Мод — **GNU LGPL v3** ([LICENSE](LICENSE), вместе с текстом GNU GPL v3 в [COPYING](COPYING)).
+
+AIO-JAR включает сторонние компоненты под их собственными лицензиями (GraalPy и Truffle — UPL, стандартная
+библиотека Python — PSF, sqlite-jdbc — Apache 2.0 и др.), см. [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+CC: Tweaked в мод не входит. Кириллический шрифт — отдельно, под CCPL ([resourcepack/CREDITS.md](resourcepack/CREDITS.md)).

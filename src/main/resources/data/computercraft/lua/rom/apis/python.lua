@@ -35,7 +35,7 @@ local function drive(id, env)
     local export
     export = function(v, depth, seen)
         local t = type(v)
-        if t == "function" then return { __kik_ref = refId(v), kind = "function" } end
+        if t == "function" then return { __ccpy_ref = refId(v), kind = "function" } end
         if t == "thread" or t == "userdata" then return tostring(v) end
         if t ~= "table" then return v end
         depth, seen = depth or 0, seen or {}
@@ -58,7 +58,7 @@ local function drive(id, env)
             end
         end
         if seen[v] or depth > 32 then
-            return { __kik_ref = refId(v), kind = "table", keys = keys }
+            return { __ccpy_ref = refId(v), kind = "table", keys = keys }
         end
         seen[v] = true
         local out = {}
@@ -68,14 +68,14 @@ local function drive(id, env)
             end
         end
         seen[v] = nil
-        if object then return { __kik_ref = refId(v), kind = "table", keys = keys, fields = out } end
+        if object then return { __ccpy_ref = refId(v), kind = "table", keys = keys, fields = out } end
         return out
     end
 
     -- Value from Java -> Lua: references become the original Lua values again.
     local function import(v)
         if type(v) ~= "table" then return v end
-        if v.__kik_ref ~= nil then return refs[v.__kik_ref] end
+        if v.__ccpy_ref ~= nil then return refs[v.__ccpy_ref] end
         local out = {}
         for k, x in pairs(v) do out[k] = import(x) end
         return out

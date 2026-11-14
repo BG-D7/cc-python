@@ -23,7 +23,7 @@ and Forge 1.20.1 on Java 17. Do not combine source layouts or APIs across versio
 - `Do not use when`: the task is implementing gameplay features rather than testing them (`minecraft-modding`, `minecraft-plugin-dev`, `minecraft-datapack`).
 - `Do not use when`: the task is release automation or publishing pipelines (`minecraft-ci-release`).
 
-## This Project (kik-cc-python): In-Game Tests Are Allowed
+## This Project (CC: Python): In-Game Tests Are Allowed
 
 The owner explicitly allows and wants in-game tests: run a real server with
 the built mod and drive CC computers yourself, instead of stopping at JUnit.
@@ -71,7 +71,7 @@ Facts that differ from the generic sections below:
   password from `~/Games/kik-python-test/rcon.pass`). `startup.lua` is
   stored as UTF-8 but must go onto the disk as **cp1251**
   (`iconv -f utf-8 -t cp1251`), since the terminal and its Lua strings use the
-  kik-pack font encoding. The `.py` files stay UTF-8.
+  Cyrillic (CP1251) font encoding. The `.py` files stay UTF-8.
 - Gotchas found the hard way:
   - Empty servers stop ticking after 60 s. Put
     `pause-when-empty-seconds=0` in `server.properties`.

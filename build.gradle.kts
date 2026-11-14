@@ -25,7 +25,8 @@ java {
 repositories {
     mavenCentral()
     maven("https://maven.fabricmc.net/")
-    maven("https://squiddev.cc/maven/")
+    maven("https://maven.squiddev.cc/") { content { includeGroup("cc.tweaked") } }
+    maven("https://maven.neoforged.net/releases/") { content { includeGroupAndSubgroups("net.neoforged") } }
 }
 
 val graalpyVersion = property("graalpy_version") as String
@@ -34,11 +35,17 @@ dependencies {
     compileOnly("net.fabricmc:fabric-loader:$loaderVersion")
     compileOnly("org.slf4j:slf4j-api:2.0.17")
 
-    // Game-side jars (CC: Tweaked, NeoForge bits) from libs/; provided by the server at runtime.
-    val provided = fileTree("libs") {
-        include("cc-tweaked-*.jar", "neoforge-*.jar", "guava-*.jar", "slf4j-*.jar")
+    // Game-side jars, provided by the server at runtime. Plain jars only: their POMs would pull in Minecraft.
+    val provided = listOf(
+        "cc.tweaked:cc-tweaked-$minecraftVersion-fabric:$ccVersion",
+        "net.neoforged:bus:8.0.5",
+        "net.neoforged.fancymodloader:loader:12.0.13",
+        "com.google.guava:guava:33.6.0-jre",
+    )
+    provided.forEach {
+        compileOnly(it) { isTransitive = false }
+        testImplementation(it) { isTransitive = false }
     }
-    compileOnly(provided)
 
     // Bundled into the AIO jar: the mod is self-contained and needs no other Python mod.
     implementation("org.graalvm.polyglot:polyglot:$graalpyVersion")
@@ -49,8 +56,8 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("org.slf4j:slf4j-api:2.0.17")
     testRuntimeOnly("org.slf4j:slf4j-simple:2.0.17")
-    testImplementation(provided)
 }
 
 tasks.processResources {
@@ -85,7 +92,7 @@ tasks.test {
         events("passed", "skipped", "failed")
     }
     systemProperty("polyglotimpl.DisableMultiReleaseCheck", "true")
-    systemProperty("org.sqlite.tmpdir", "${System.getProperty("user.home")}/.kik-graalpy-cache/tmp")
+    systemProperty("org.sqlite.tmpdir", "${System.getProperty("user.home")}/.ccpython-cache/tmp")
     jvmArgs("--enable-native-access=ALL-UNNAMED", "-Xmx2g", "-XX:+UseParallelGC")
     // Servers run without -ea. GraalPy 25.5's Bytecode DSL interpreter trips one of its own asserts while building the
     // stack trace of an interrupted script (Context.interrupt), so keep asserts for our code only.
@@ -154,4 +161,14 @@ tasks.register<Jar>("packageAioJar") {
             "Fabric-Loom-Version" to "1.17.11"
         )
     }
+}
+
+// Optional Cyrillic terminal font for the clients, as a resource pack (a server can push it with resource-pack=).
+// It is licensed separately (CCPL), see resourcepack/CREDITS.md.
+tasks.register<Zip>("packageResourcePack") {
+    group = "build"
+    description = "Packages the Cyrillic (CP1251) terminal font resource pack"
+    archiveFileName.set("cc-python-cyrillic-$version.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("libs"))
+    from("resourcepack")
 }

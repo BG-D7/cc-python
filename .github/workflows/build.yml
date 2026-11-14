@@ -26,12 +26,13 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build Mod & Run Tests
-        run: ./gradlew build packageAioJar --no-daemon --stacktrace
+        run: ./gradlew build packageAioJar packageResourcePack --no-daemon --stacktrace
 
       - name: Upload Mod Artifacts
         uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
-          name: kik-cc-python-jars
+          name: cc-python-jars
           path: |
             build/libs/*.jar
+            build/libs/*.zip
           retention-days: 14

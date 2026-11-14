@@ -1,33 +1,34 @@
 modLoader="javafml"
 loaderVersion="[1,)"
 license="LGPL-3.0"
-issueTrackerURL="https://github.com/diffdev/kik-cc-python/issues"
+issueTrackerURL="https://github.com/BG-D7/cc-python/issues"
 
 [[mods]]
-modId="kik_cc_python"
+modId="ccpython"
 version="${version}"
-displayName="KiK CC: Tweaked Python"
+displayName="CC: Python"
+displayURL="https://github.com/BG-D7/cc-python"
 authors="diff"
 description='''
 Python 3.13 (GraalPy) for CC: Tweaked computers and turtles: sandboxed, with requests, websocket and sqlite3
 that follow CC's rules. Self-contained, no other mods needed.
 '''
 
-[[dependencies.kik_cc_python]]
+[[dependencies.ccpython]]
 modId="neoforge"
 type="required"
 versionRange="[1,)"
 ordering="NONE"
 side="BOTH"
 
-[[dependencies.kik_cc_python]]
+[[dependencies.ccpython]]
 modId="minecraft"
 type="required"
 versionRange="[${minecraft_version},26.3)"
 ordering="NONE"
 side="BOTH"
 
-[[dependencies.kik_cc_python]]
+[[dependencies.ccpython]]
 modId="computercraft"
 type="required"
 versionRange="[1.120.0,)"

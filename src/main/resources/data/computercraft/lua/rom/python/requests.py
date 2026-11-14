@@ -2,14 +2,14 @@
 """A small subset of the `requests` library for ComputerCraft.
 
 Requests follow the server's CC: Tweaked HTTP rules (the same allow/deny list as Lua's http API; local and private
-addresses are blocked by default) unless the server overrides them in the kik-cc-python config.
+addresses are blocked by default) unless the server overrides them in the CC: Python config.
 """
 
 import json as _json
 import threading as _threading
 from urllib.parse import urlencode as _urlencode, urlsplit as _urlsplit, urlunsplit as _urlunsplit
 
-import _kik
+import _ccpy
 
 __all__ = ["request", "get", "post", "put", "patch", "delete", "head", "options", "Session", "session", "Response",
            "RequestException", "ConnectionError", "HTTPError", "Timeout", "TooManyRedirects", "get_async", "post_async"]
@@ -239,7 +239,7 @@ def request(method, url, params=None, data=None, headers=None, cookies=None, fil
     flat = []
     for k, v in hdrs.items():
         flat += ["s", str(k), "s", str(v)]
-    r = list(_kik._native.http_request(method, url, flat, None if body is None else body.decode("latin-1"),
+    r = list(_ccpy._native.http_request(method, url, flat, None if body is None else body.decode("latin-1"),
                                        float(timeout or 0), bool(allow_redirects)))
     if r[0] != "ok":
         _raise(r[1])
