@@ -1,10 +1,14 @@
 name: Modrinth page
 
-# Creates the Modrinth project or syncs its page from docs/modrinth.md and docs/images (Actions → Run workflow).
+# Creates the Modrinth project or syncs its page from docs/modrinth.md (Actions → Run workflow).
 # Needs the MODRINTH_TOKEN secret with "Create projects", "Read projects" and "Write projects".
 on:
   workflow_dispatch:
     inputs:
+      images:
+        description: "Also upload docs/images as icon and gallery (script-drawn; see Modrinth rule 6.2)"
+        type: boolean
+        default: false
       submit:
         description: "Submit the draft for Modrinth review (needs an uploaded version)"
         type: boolean
@@ -24,5 +28,6 @@ jobs:
       - name: Create or update the project
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          IMAGES: ${{ inputs.images }}
           SUBMIT: ${{ inputs.submit }}
         run: python3 .github/scripts/modrinth_page.py
