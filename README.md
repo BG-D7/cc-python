@@ -8,208 +8,188 @@
 [![Java](https://img.shields.io/badge/Java-25%20LTS-red.svg)](https://adoptium.net/)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](LICENSE)
 
-**kik-cc-python** — All-In-One (AIO) гибридный мод для Minecraft 26.2 (**Fabric & NeoForge**), интегрирующий современный полноценный **Python 3.12 (GraalPy)** в компьютеры и роботы **CC: Tweaked**. Один и тот же JAR-файл поддерживается обоими загрузчиками!
+**kik-cc-python** добавляет в компьютеры и черепахи **CC: Tweaked** второй язык — **Python 3.12** (GraalPy 25).
+Один гибридный JAR для Minecraft 26.2 работает и на **Fabric**, и на **NeoForge**. Мод самостоятельный: GraalPy,
+стандартная библиотека и SQLite лежат внутри JAR. Других Python-модов и установленного Python не нужно.
 
-Разработан специально для космического образовательного курса **«Код и Космос»** (KiK).
-
----
-
-## 🌟 Ключевые возможности
-
-- 🐍 **Полноценный Python 3.12:**
-  Современный синтаксис (f-строки, match/case, type hints, walrus operator `:=`).
-- 📦 **All-In-One (AIO) сборка:**
-  Всё включено в один `.jar` — GraalPy runtime, stdlib и библиотеки. Не требует сторонней установки Python на клиент или сервер.
-- 📚 **Богатая стандартная библиотека:**
-  `math`, `json`, `random`, `datetime`, `collections`, `itertools`, `re`, `asyncio`, `logging`, `pathlib`, `hashlib` и др.
-- 🌐 **Сетевые и прикладные библиотеки:**
-  - `requests` — HTTP GET, POST, JSON API с поддержкой `requests.Session()` (на базе неблокирующего Java 11+ `HttpClient`).
-  - `sqlite3` — полноценная встроенная SQL база данных в памяти (`:memory:`) или на диске компьютера (на базе `org.sqlite.JDBC`).
-  - `websocket` — WebSocket клиент для связи компьютеров с внешними сервисами телеметрии.
-- 📥 **Пакетный менеджер `pip` / `micropip` прямо в игре:**
-  Установка pure-Python библиотек с PyPI командой `pip install <название>` с распаковкой `.whl` в `/lib` на диске компьютера.
-- 🗂️ **Виртуальный импортер модулей (CCPathFinder):**
-  Полноценная поддержка `import` модулей и пакетов из виртуальной файловой системы ComputerCraft (`/`, `/lib`, `/site-packages`).
-- 📁 **Серверный каталог общих библиотек (`config/kik-cc-python/libs`):**
-  Централизованная папка на сервере для `.py` и `.whl` файлов, доступных всем компьютерам мира без расхода места на их локальных дисках.
-- 🇷🇺 **Поддержка русского языка для kik-pack:**
-  Автоматическая трансляция кириллицы (UTF-8) в кодировку шрифта CC (CP1251) на лету. Символы русского алфавита корректно отображаются на мониторах и терминалах.
-- 🐢 **Нативные ComputerCraft мосты:**
-  Прямой доступ к API компьютеров и черепах: `turtle`, `redstone`, `term`, `os`, `fs`, `colors`, `kik`.
-- 🛡️ **Песочница и безопасность:**
-  Изоляция от хост-системы через GraalVM Polyglot Sandbox и файловую систему CC: Tweaked.
+Сделан для образовательного курса **«Код и Космос»** (KiK), но годится для любого сервера с CC: Tweaked.
 
 ---
 
-## 🏗️ Архитектура
+## Что умеет
 
-```mermaid
-flowchart TD
-    subgraph Minecraft ["Minecraft 26.2 (Fabric)"]
-        subgraph CC ["CC: Tweaked (1.120.2)"]
-            Term["Computer / Turtle Terminal"]
-            LuaROM["ROM: python.lua / py.lua"]
-        end
-
-        subgraph KIK ["kik-cc-python Mod"]
-            ModInit["KikCCPythonMod"]
-            Session["PythonSession"]
-            Bridge["PythonExecutionBridge"]
-            Stream["TerminalOutputStream (CP1251 / UTF-8)"]
-            
-            subgraph Bridges ["Native CC Bridges"]
-                TB["TurtleBridge"]
-                RB["RedstoneBridge"]
-                FB["FsBridge"]
-                OB["OsBridge"]
-                KB["KikBridge"]
-            end
-
-            subgraph NativeLibs ["Embedded Modules"]
-                Req["requests (JavaHttpClient)"]
-                Sql["sqlite3 (SQLite-JDBC)"]
-                Ws["websocket"]
-            end
-        end
-
-        subgraph Engine ["GraalVM Polyglot Engine"]
-            GraalPy["GraalPy 25.0 (Python 3.12 Runtime)"]
-            StdLib["Embedded Python 3.12 Stdlib"]
-        end
-    end
-
-    Term --> LuaROM
-    LuaROM -->|Java Method Call / Bytecode| Session
-    Session --> Bridge
-    Bridge --> Bridges
-    Bridges --> CC
-    Session --> GraalPy
-    GraalPy --> StdLib
-    GraalPy --> NativeLibs
-    GraalPy -->|sys.stdout / sys.stderr| Stream
-    Stream --> Term
-```
+- **Python как родной язык CC.** Программа на Python ведёт себя как программа на Lua:
+  - пишет в терминал через `term.redirect`, мониторы и `multishell`;
+  - останавливается по Ctrl+T;
+  - не подвешивает компьютер: Python работает в своём потоке сервера.
+- **Песочница по умолчанию.** Скрипт видит только диск своего компьютера и ROM. Нет доступа к файлам сервера,
+  Java, процессам и сырым сокетам. Отключается одним ключом конфига для тех, кто понимает риск.
+- **`requests` и `websocket`** подчиняются тем же правилам HTTP, что и Lua-API `http`: белый и чёрный списки,
+  лимиты размера, вкл/выкл. Правила можно переопределить в конфиге мода.
+- **`sqlite3`.** Файл базы лежит на диске компьютера: учитывается в квоте и переезжает вместе с компьютером.
+- **REPL.** Переменные живут между строками, выражения печатаются, есть история строк. Ввод, набранный
+  до появления приглашения, не теряется.
+- **Импорт из папки скрипта**, из `/lib/python`, из пакетов, поставленных `pip`, и из общей серверной папки.
+- **Понятные ошибки.** Traceback с номерами строк, печатается один раз.
+- **Кириллица везде:** вывод, ввод, аргументы, исходники в UTF-8 или CP1251, строки из Lua. Терминал работает
+  в кодировке шрифта kik-pack (CP1251).
+- **`pip install`** ставит pure-Python пакеты (wheel `py3-none-any`) с PyPI с зависимостями и маркерами PEP 508.
+  Пакеты ставятся на диск компьютера.
 
 ---
 
-## 🎮 Использование в игре
+## Использование в игре
 
-В терминале любого компьютера или черепахи доступны две ROM-команды:
+### Программы
 
-### 1. Интерактивный REPL
-Запустите `python` или `py` без аргументов:
-```lua
-python
-```
+| Команда | Что делает |
+|---|---|
+| `python` / `py` | Интерактивный REPL |
+| `python script.py [args…]` | Запуск файла (`.py` можно не писать); путь относительно текущей папки shell |
+| `python -c "код" [args…]` | Однострочник |
+| `python -m модуль [args…]` | Запуск модуля как `__main__` (`python -m pip list`) |
+| `python -V` | Версия |
+| `pip install|uninstall|list|freeze|show …` | Пакеты (то же, что `python -m pip`) |
+
 ```text
-Python 3.12.8 (GraalPy 25.0) on CC: Tweaked
-Type "help", "copyright", "credits" or "license" for more information.
->>> import math
->>> math.sqrt(144)
-12.0
+> python
+Python 3.12 (GraalPy 25.0) for CC: Tweaked
+>>> x = 5
+>>> x * 2
+10
 >>> import turtle
 >>> turtle.forward()
 True
 >>> exit()
 ```
 
-### 2. Запуск скрипта
-Создайте файл скрипта (например, через `edit rover.py`):
+### Lua API из Python
+
+API компьютера импортируются как модули: `turtle`, `redstone`/`rs`, `term`, `colors`/`colours`,
+`peripheral`, `rednet`, `gps`, `textutils`, `settings`, `disk`, `keys`, `window`, `paintutils`, `shell`,
+`multishell`, `commands`, `pocket`, `vector`, `help`.
+
+Lua-модули `os`, `fs`, `io` и `http` называются так же, как модули stdlib Python. Поэтому их Lua-версии лежат
+под префиксом: `cc.os`, `cc.fs`, `cc.io`, `cc.http`, либо `cc_os`, `cc_fs`.
+
+Имена функций работают в обоих стилях: `turtle.turnRight()` и `turtle.turn_right()`.
+
 ```python
-# rover.py
-import turtle
-import requests
+import turtle, colors
+from cc import lua
 
-print("Спутник связи запущен...")
-for step in range(3):
-    turtle.forward()
-    turtle.turnRight()
-
-resp = requests.get("https://api.github.com/zen")
-print(f"Телеметрия ЦУП: {resp.text}")
-```
-И запустите его:
-```lua
-py rover.py
+turtle.forward()
+print(turtle.get_fuel_level(), colors.combine(colors.red, colors.white))
+print(lua.eval("return os.getComputerID()"))   # произвольный Lua-код
 ```
 
-### 3. Однострочное выполнение (`-c`)
+`input()` — это `read()` CC. `time.sleep()` и ожидание событий отдают управление компьютеру. Ctrl+T приходит
+в скрипт как `KeyboardInterrupt`. Если скрипт его проглотил или крутится в цикле, через
+`limits.terminateGraceMs` он прерывается принудительно. Повторный Ctrl+T прерывает сразу.
+
+### Python из Lua (`python` API)
+
 ```lua
-py -c "import math; print('Pi =', math.pi)"
+local ok, err, printed = python.run("rover.py", { "arg1" }, _ENV)   -- файл
+local ok, err = python.execute("print('Привет')")                  -- код
+local ok, value = python.eval("{'a': [1, 2.5]}")                    -- значение -> таблица Lua
+python.repl(_ENV)
+print(python.version(), python.sandboxed())
 ```
 
-### 4. Установка библиотек (`pip`)
-Прямо в терминале компьютера или черепахи:
-```lua
-pip install tabulate
-```
-Или просмотр установленных пакетов:
-```lua
-pip list
-```
-После установки библиотека сразу доступна в ваших Python-скриптах:
-```python
-import tabulate
-print(tabulate.tabulate([["Модуль", "Статус"], ["Двигатель", "OK"]]))
-```
+Передавайте `_ENV`, чтобы Python видел `shell`, `require` и другие локальные переменные программы.
+
+### Библиотеки
+
+- `requests`: `get/post/put/patch/delete/head/options`, `Session` (cookies), `Response.json()/text/content`,
+  `raise_for_status`, `timeout`, редиректы, исключения в стиле requests.
+- `websocket` (API websocket-client): `create_connection`, `WebSocket.send/recv/close`, `WebSocketApp`.
+- `sqlite3` (DB-API 2.0):
+  - параметры `?` и `:name`, `Row`, транзакции и контекстный менеджер;
+  - `executescript`, `iterdump`.
+- `pip` / `micropip`. Пакеты ставятся в `/lib/python/site-packages` на диске компьютера.
+- Стандартная библиотека Python 3.12 без C-расширений: `json`, `re`, `math`, `random`, `datetime`,
+  `collections`, `itertools`, `asyncio`, `dataclasses`, `logging`, `pathlib`, `zipfile` и т. д.
+
+Общие для всего сервера модули и пакеты кладутся в `config/kik-cc-python/libs/`. В Python эта папка видна как
+`/rom/python-libs` и не расходует диски компьютеров.
 
 ---
 
-## 🔒 Безопасность и песочница
+## Конфигурация
 
-Для учебных курсов и серверов со студентами критична защита от деструктивных действий:
+Файл `config/kik-cc-python/config.properties` создаётся при первом запуске. Изменения применяются без
+перезапуска сервера: к новым запускам скриптов.
 
-| Угроза | Решение в kik-cc-python |
+| Ключ | По умолчанию | Смысл |
+|---|---|---|
+| `sandbox.disable` | `false` | **Опасно.** `true` снимает песочницу: `import java`, файлы сервера под `/host`, сокеты, процессы. Полный контроль над сервером. |
+| `http.enabled` | `inherit` | `requests` вкл/выкл; `inherit` = `http.enabled` из конфига CC |
+| `websocket.enabled` | `inherit` | То же для `websocket` |
+| `http.rules` | `inherit` | Свои правила вместо правил CC: `action host[:port]` через `;`, первое совпадение побеждает. Пример: `deny $private; allow api.example.com; deny *` |
+| `text.encoding` | `cp1251` | Кодировка строк Lua и шрифта: `cp1251` (kik-pack), `latin1` (штатный шрифт CC), `utf-8` |
+| `limits.maxRunSeconds` | `0` | Лимит времени одного запуска, с (0 = нет; REPL не ограничивается) |
+| `limits.terminateGraceMs` | `1500` | Сколько ждать реакции на Ctrl+T перед принудительной остановкой |
+| `limits.maxSessions` / `limits.maxSessionsPerComputer` | `32` / `4` | Одновременные скрипты на сервер / на компьютер |
+| `limits.maxEventQueue` | `256` | Очередь событий скрипта (как у CC) |
+| `performance.prewarm` | `true` | Распаковать рантайм и прогреть интерпретатор при старте сервера |
+
+Рантайм GraalPy (около 25 МБ) распаковывается один раз в `~/.kik-graalpy-cache/graalpy-home/<хеш>/`.
+
+---
+
+## Безопасность (песочница)
+
+| Угроза | Что делает мод |
 |---|---|
-| Доступ к файлам сервера (`/etc/passwd`, конфиги) | GraalVM Sandbox запрещает доступ к хостовой FS. Доступны только файлы внутри виртуального диска компьютера (`fs` bridge). |
-| Краш сервера (`System.exit(0)`) | Запрещён импорт Java-классов вне белого списка (`allowHostAccess(HostAccess.EXPLICIT)`). |
-| Запуск процессов (`subprocess`, `os.system`) | `allowCreateProcess(false)` в контексте Polyglot. |
-| Зависание в бесконечном цикле (`while True: pass`) | Кооперативный планировщик выполнения с квантованием тактов (yield/timeout) аналогично Lua в CC. |
-| Потребление памяти | Ограничение выделения heap для одного скрипта через ResourceLimits. |
+| Чтение и запись файлов сервера | Своя файловая система поверх FS компьютера CC: диск компьютера, его дискеты, `/rom`. Выйти за них нельзя, квота диска соблюдается. |
+| Java и краш сервера | `allowHostClassLookup(false)`, `HostAccess` только для аннотированных методов моста, без native access и polyglot. |
+| Процессы (`subprocess`, `os.system`) | `allowCreateProcess(false)` |
+| Сеть мимо правил | Сырые сокеты запрещены (`PermissionError`). HTTP и websocket проходят только через мост, где действуют правила CC (`$private` и т. п.) или правила конфига. |
+| Переменные окружения сервера | `EnvironmentAccess.NONE` |
+| Бесконечный цикл, зависший скрипт | Скрипт в отдельном потоке и никогда не блокирует поток CC. Ctrl+T, `limits.maxRunSeconds` и выключение компьютера останавливают его гарантированно, даже во время сетевого запроса. |
+
+Лимита памяти на один скрипт нет: его даёт только общий `-Xmx` сервера.
 
 ---
 
-## 🛠️ Сборка проекта
+## Сборка и тесты
 
-### Требования
-- **JDK 25** (рекомендуется [Oracle GraalVM 25](https://www.graalvm.org/) или Eclipse Temurin 25).
-- Linux / macOS / Windows.
+Нужен **JDK 25**. CC: Tweaked и NeoForge подключаются как `compileOnly` из `libs/`. GraalPy и sqlite-jdbc
+берутся из Maven.
 
-### Сборка стандартного мода (без тяжелых библиотек)
 ```bash
-./gradlew build
+./gradlew packageAioJar        # build/libs/kik-cc-python-<версия>-aio.jar (~100 МБ, всё внутри)
+./gradlew cleanTest test       # JUnit
 ```
-Выходной файл: `build/libs/kik-cc-python-1.0.0+26.2.jar`
 
-### Сборка All-In-One (AIO) мода
-```bash
-./gradlew packageAioJar
-```
-Выходной файл: `build/libs/kik-cc-python-1.0.0+26.2-aio.jar` (~109 MB, содержит GraalPy runtime, stdlib и все зависимости).
+**JUnit** (`PyRunTest`) запускает настоящий GraalPy через Java-заменитель Lua-драйвера и настоящую
+`FileSystem` CC на временной папке. Покрыты:
+- вывод и кириллица, CP1251-исходники;
+- traceback;
+- импорт из папки скрипта;
+- REPL;
+- Ctrl+T: в цикле, во `sleep` и для скрипта, который глотает `KeyboardInterrupt`;
+- `maxRunSeconds`;
+- песочница;
+- sqlite на диске компьютера;
+- вызовы Lua API и `eval`;
+- правила HTTP, таймаут и Ctrl+T при зависшем ответе сервера;
+- `python -m pip`.
 
-### Запуск тестов
-```bash
-./gradlew test
-```
-Тестовый набор проверяет:
-1. Вычисление базовых выражений и работу стандартных библиотек (`math`, `json`, `random`).
-2. Асинхронные корутины (`asyncio`).
-3. HTTP запросы и API сессий (`requests.Session`).
-4. Базу данных SQLite в памяти (`sqlite3`).
-5. Корректность перекодирования русских символов в кодировку CP1251 терминала.
-6. Отказоустойчивость мостов черепахи (`TurtleBridge`).
+**Игровые тесты** идут на отдельном локальном сервере Fabric с этим JAR. Скрипт `startup.lua` на компьютере
+прогоняет те же сценарии через настоящий CC:
+- `shell.run("python", …)`;
+- `parallel` с Ctrl+T;
+- REPL с вводом через события;
+- `pip install`;
+- `requests` и `websocket` в интернет.
+
+Результаты пишутся в файл на диске компьютера. NeoForge локально не тестируется.
 
 ---
 
-## 📋 Проверка качества (minecraft-agent-skills)
+## Лицензия
 
-Проект полностью валидирован с помощью инструментов [minecraft-agent-skills](https://github.com/jahrome907/minecraft-agent-skills):
-- `check-build.sh` — **[PASS]** (Java 25, Fabric 26.2, Gradle 9.5.0 wrapper).
-- `validate-test-layout.sh` — **[PASS]** (JUnit Platform 5.11, чистая структура `src/test/java`).
-
----
-
-## 📄 Лицензия
-
-Проект распространяется под лицензией **GNU LGPL v3**. Подробности в файле [LICENSE](LICENSE).
-CC: Tweaked защищён ComputerCraft Public License. GraalVM и Truffle распространяются под Universal Permissive License (UPL).
+**GNU LGPL v3**, см. [LICENSE](LICENSE). CC: Tweaked распространяется под ComputerCraft Public License,
+GraalVM/GraalPy/Truffle под Universal Permissive License (UPL), sqlite-jdbc под Apache 2.0.

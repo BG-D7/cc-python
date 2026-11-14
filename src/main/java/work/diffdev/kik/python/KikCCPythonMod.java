@@ -5,8 +5,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class KikCCPythonMod {
@@ -16,38 +14,29 @@ public class KikCCPythonMod {
     private static final AtomicBoolean INITIALIZED = new AtomicBoolean(false);
 
     public static void init() {
-        if (!INITIALIZED.compareAndSet(false, true)) {
-            return;
-        }
-        LOGGER.info("[KiK CC-Python AIO] Initializing modern Python 3 (GraalPy) for CC: Tweaked...");
+        if (!INITIALIZED.compareAndSet(false, true)) return;
 
-        // Ensure safe tmpdir for native libraries (fixes noexec /tmp on Linux/NixOS)
+        PythonConfig config = PythonConfig.get();
         try {
-            Path cacheTmp = Paths.get(System.getProperty("user.home"), ".kik-graalpy-cache", "tmp");
-            Files.createDirectories(cacheTmp);
-            System.setProperty("org.sqlite.tmpdir", cacheTmp.toString());
-
-            Path serverLibs = Paths.get("config", "kik-cc-python", "libs");
-            Files.createDirectories(serverLibs);
-        } catch (Throwable ignored) {}
-
-        System.setProperty("polyglotimpl.DisableMultiReleaseCheck", "true");
+            Files.createDirectories(PythonConfig.DIR.resolve("libs"));
+        } catch (Exception e) {
+            LOGGER.warn("[KiK CC-Python] Cannot create {}: {}", PythonConfig.DIR.resolve("libs"), e.toString());
+        }
+        if (config.sandboxDisabled) {
+            LOGGER.warn("[KiK CC-Python] sandbox.disable = true: Python programs have full access to this server.");
+        }
 
         ComputerCraftAPI.registerAPIFactory(PythonAPI::create);
 
-        // Pre-warm GraalPy runtime cache asynchronously in background
-        Thread warmupThread = new Thread(() -> {
-            try {
-                LOGGER.info("[KiK CC-Python AIO] Pre-warming GraalPy runtime resources...");
-                PythonSession.warmup();
-                LOGGER.info("[KiK CC-Python AIO] GraalPy runtime ready.");
-            } catch (Throwable t) {
-                LOGGER.warn("[KiK CC-Python AIO] Pre-warm note: {}", t.getMessage());
-            }
-        }, "KiK-GraalPy-Warmup");
-        warmupThread.setDaemon(true);
-        warmupThread.start();
-
-        LOGGER.info("[KiK CC-Python AIO] Initialization complete.");
+        if (config.prewarm) {
+            // Unpack the runtime and build a ready interpreter in the background, so the first program starts fast.
+            PythonRuntime.SCHEDULER.execute(() -> {
+                long t0 = System.nanoTime();
+                if (PythonRuntime.home().isEmpty()) return;
+                LOGGER.info("[KiK CC-Python] Python runtime ready in {} ms", (System.nanoTime() - t0) / 1_000_000);
+                PythonRuntime.prewarmAsync(!config.sandboxDisabled);
+            });
+        }
+        LOGGER.info("[KiK CC-Python] Python 3 (GraalPy) for CC: Tweaked registered.");
     }
 }

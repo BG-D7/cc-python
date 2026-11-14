@@ -9,14 +9,21 @@ version="${version}"
 displayName="KiK CC: Tweaked Python"
 authors="diff"
 description='''
-Modern Python 3.12 (GraalPy) integration for ComputerCraft: Tweaked.
-All-In-One runtime with stdlib, asyncio, requests, sqlite3, and websocket.
+Python 3.12 (GraalPy) for CC: Tweaked computers and turtles: sandboxed, with requests, websocket and sqlite3
+that follow CC's rules. Self-contained, no other mods needed.
 '''
 
 [[dependencies.kik_cc_python]]
 modId="neoforge"
 type="required"
 versionRange="[1,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.kik_cc_python]]
+modId="minecraft"
+type="required"
+versionRange="[${minecraft_version},26.3)"
 ordering="NONE"
 side="BOTH"
 

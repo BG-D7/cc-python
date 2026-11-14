@@ -1,107 +1,64 @@
 -- SPDX-FileCopyrightText: 2026 diff
--- Python 3 (GraalPy) runner and REPL for CC: Tweaked
+-- python [-c code | -m module | script.py] [args...]: run Python 3, or the interactive interpreter.
 
-local tArgs = { ... }
+local args = { ... }
 
-if not python then
-    printError("Python API is not available on this computer.")
+if not python or not _python then
+    printError("Python is not available on this computer.")
     return
 end
 
--- Version flag
-if #tArgs == 1 and (tArgs[1] == "-v" or tArgs[1] == "--version") then
+local function usage()
+    print("Usage: python [option] [script.py | -c code | -m module] [args...]")
+    print("  -c code     run code given as a string")
+    print("  -m module   run a library module as a program")
+    print("  -V          print the Python version")
+    print("Without arguments: the interactive interpreter.")
+end
+
+local function finish(ok, err, printed)
+    if not ok and err and not printed then printError(err) end
+end
+
+local first = args[1]
+if first == "-h" or first == "--help" or first == "-?" then
+    usage()
+elseif first == "-V" or first == "-v" or first == "--version" then
     print(python.version())
-    return
-end
-
--- Help flag
-if #tArgs == 1 and (tArgs[1] == "-h" or tArgs[1] == "--help") then
-    print("Usage: python [options] [script [args]]")
-    print("Options:")
-    print("  -c cmd     : program passed in as string")
-    print("  -v, --version : print the Python version")
-    print("  -h, --help    : print this help message")
-    print("Run without arguments to start the interactive REPL.")
-    return
-end
-
--- Inline code execution: python -c "code" [args...]
-if #tArgs >= 2 and tArgs[1] == "-c" then
-    local code = tArgs[2]
-    local pyArgs = {}
-    for i = 3, #tArgs do
-        table.insert(pyArgs, tArgs[i])
+elseif first == "-c" then
+    if not args[2] then
+        printError("python: -c needs an argument")
+        return
     end
-    local ok, err = python.execute(code, pyArgs)
-    if not ok and err then
-        printError(err)
+    finish(python.execute(args[2], { table.unpack(args, 3) }, _ENV))
+elseif first == "-m" then
+    local module = args[2]
+    if not module or not module:match("^[%w_][%w_%.]*$") then
+        printError("python: -m needs a module name")
+        return
     end
-    return
-end
-
--- Script execution: python script.py [args...]
-if #tArgs >= 1 and tArgs[1] ~= "-i" then
-    local path = shell.resolve(tArgs[1])
+    local code = "import runpy\nrunpy.run_module(" .. string.format("%q", module) ..
+        ", run_name='__main__', alter_sys=True)"
+    finish(python.execute(code, { table.unpack(args, 3) }, _ENV))
+elseif first and first:sub(1, 1) == "-" and first ~= "-" then
+    printError("python: unknown option " .. first)
+    usage()
+elseif first and first ~= "-" then
+    local path = shell.resolve(first)
+    if not fs.exists(path) and fs.exists(path .. ".py") then path = path .. ".py" end
     if not fs.exists(path) then
-        printError("No such file: " .. tArgs[1])
+        printError("python: can't open file '" .. first .. "': No such file")
+        return
+    elseif fs.isDir(path) then
+        printError("python: '" .. first .. "' is a directory")
         return
     end
-    if fs.isDir(path) then
-        printError(tArgs[1] .. " is a directory")
-        return
-    end
-
-    local pyArgs = {}
-    for i = 2, #tArgs do
-        table.insert(pyArgs, tArgs[i])
-    end
-
-    local ok, err = python.run(path, pyArgs)
-    if not ok and err then
-        printError(err)
-    end
-    return
-end
-
--- Interactive REPL
-if term.isColour() then
-    term.setTextColour(colours.yellow)
-end
-print("Python 3.12 (GraalPy on CC: Tweaked)")
-print('Type "exit()" or "quit()" to leave.')
-if term.isColour() then
+    finish(python.run("/" .. path, { table.unpack(args, 2) }, _ENV))
+else
+    if term.isColour() then term.setTextColour(colours.yellow) end
+    print(python.version())
+    if term.isColour() then term.setTextColour(colours.lightGrey) end
+    print("exit() or Ctrl+T on an empty line to leave.")
     term.setTextColour(colours.white)
-end
-
-local history = {}
-while true do
-    write(">>> ")
-    local line = read(nil, history)
-    if not line then
-        break
-    end
-
-    local trimmed = line:gsub("^%s*(.-)%s*$", "%1")
-    if trimmed == "exit()" or trimmed == "quit()" or trimmed == "exit" or trimmed == "quit" then
-        break
-    end
-
-    if #trimmed > 0 then
-        local code = line
-        if line:sub(-1) == ":" then
-            while true do
-                write("... ")
-                local nextLine = read(nil, history)
-                if not nextLine or nextLine:match("^%s*$") then
-                    break
-                end
-                code = code .. "\n" .. nextLine
-            end
-        end
-
-        local ok, err = python.execute(code, {})
-        if not ok and err then
-            printError(err)
-        end
-    end
+    finish(python.repl(_ENV))
 end

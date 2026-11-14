@@ -23,6 +23,71 @@ and Forge 1.20.1 on Java 17. Do not combine source layouts or APIs across versio
 - `Do not use when`: the task is implementing gameplay features rather than testing them (`minecraft-modding`, `minecraft-plugin-dev`, `minecraft-datapack`).
 - `Do not use when`: the task is release automation or publishing pipelines (`minecraft-ci-release`).
 
+## This Project (kik-cc-python): In-Game Tests Are Allowed
+
+The owner explicitly allows and wants in-game tests: run a real server with
+the built mod and drive CC computers yourself, instead of stopping at JUnit.
+Do this for every change that touches runtime behaviour (driver loop, Ctrl+T,
+REPL, HTTP rules, the filesystem, Cyrillic), and report what was verified in-game
+versus only in unit tests.
+
+Facts that differ from the generic sections below:
+
+- The build is the plain Gradle `java` plugin with `compileOnly` jars from
+  `libs/` — no Loom/ModDevGradle, so there is **no** `runClient`,
+  `runServer`, `runGameTestServer` or Fabric gametest source set. The
+  distributable is the hybrid Fabric+NeoForge `build/libs/*-aio.jar`
+  (`./gradlew packageAioJar`).
+- JUnit: `JAVA_HOME=<JDK 25> ./gradlew cleanTest test --offline`. Results are in
+  `build/test-results/test/*.xml`. Unit tests drive runs through
+  `ComputerHost` plus a fake Lua driver and a CC `FileSystem` on a temp dir.
+- In-game test server: keep a **separate** copy at `~/Games/kik-python-test/`.
+  Build it from `~/Games/kik-server` with `server.jar`,
+  `fabric-server-launch.jar`, `libraries/`, `versions/`, `run.sh`, and the mods
+  `cc-tweaked-26.2-fabric-1.120.2.jar` and `fabric-api-*+26.2.jar`. Add the
+  freshly built AIO jar, a flat world, and its own `server-port`/`rcon.port`.
+  Never run tests in `~/Games/kik-server` itself: its `KiK-NN` worlds are
+  hand-built maps for the «Код и Космос» course.
+- Drive it over RCON (localhost only; the password lives in the server's
+  `server.properties`/`rcon.pass` — do not copy it into the repo or docs):
+  `setblock … computercraft:computer_advanced`, then
+  `computercraft turn-on #<id>` / `computercraft shutdown #<id>` (selector
+  `#<id>` or `@c[...]`; only loaded computers match).
+  `computercraft queue #<id> <args…>` works **only on command computers**
+  and always queues `computer_command` with those args, not an arbitrary event.
+  To press Ctrl+T, either have the test script `os.queueEvent("terminate")`
+  on a timer (deterministic), or use a `computercraft:computer_command`
+  with a relay coroutine in `parallel` that turns `computer_command` into
+  `os.queueEvent(...)`.
+- Put test scripts on the computer's disk from the host:
+  `<world>/computercraft/computer/<id>/startup.lua` plus `.py` files. Have
+  the startup write results to a file on that disk (then `os.shutdown()`),
+  and assert on that file and on `logs/latest.log` (no `Exception`, no
+  "Internal error").
+- NeoForge is not covered by the local server. Say so in reports, or set
+  up a NeoForge 26.2 server alongside if the change is loader-specific.
+- The ready-made suite is `src/test/ingame/`: `startup.lua` (17 scenarios,
+  writes `results.txt` + `progress.log`), `app/*.py`, `rcon.py` (reads the
+  password from `~/Games/kik-python-test/rcon.pass`). `startup.lua` is
+  stored as UTF-8 but must go onto the disk as **cp1251**
+  (`iconv -f utf-8 -t cp1251`), since the terminal and its Lua strings use the
+  kik-pack font encoding. The `.py` files stay UTF-8.
+- Gotchas found the hard way:
+  - Empty servers stop ticking after 60 s. Put
+    `pause-when-empty-seconds=0` in `server.properties`.
+  - A plain `setblock … computer_advanced` creates no computer: no ID, and
+    `computercraft dump` stays empty. Use
+    `setblock X Y Z computercraft:computer_advanced{ComputerId:0,On:1b}`
+    after `forceload add`. Put the files into `computer/0/` first.
+  - In `parallel`, the coroutine that queues `terminate` must then wait with
+    `os.pullEventRaw()`. `sleep()` would itself die with "Terminated".
+  - On diffpc the proxy's fake-IP DNS hands out `198.18.0.0/15`, which
+    CC's `$private` rule denies. Lua `http` is refused too, so this is not
+    a mod bug. The denial message shows the resolved address. For
+    internet tests the test server's mod config sets
+    `http.rules = allow 198.18.0.0/15; deny $private; allow *`.
+    Compare against CC's own `http` verdict on the same URL.
+
 ## Bundled References And Helpers
 
 - Layout guide: `references/test-layouts.md`

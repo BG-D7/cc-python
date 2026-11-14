@@ -1,16 +1,12 @@
 package work.diffdev.kik.python.neoforge;
 
-import net.neoforged.fml.common.Mod;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.common.Mod;
 import work.diffdev.kik.python.KikCCPythonMod;
 
 @Mod(KikCCPythonMod.MOD_ID_NEOFORGE)
 public class KikCCPythonNeoForgeMod {
-
-    public KikCCPythonNeoForgeMod() {
-        KikCCPythonMod.init();
-    }
-
+    // FML requires exactly one public constructor.
     public KikCCPythonNeoForgeMod(IEventBus modEventBus) {
         KikCCPythonMod.init();
     }

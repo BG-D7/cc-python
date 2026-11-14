@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
     java
 }
@@ -26,18 +28,29 @@ repositories {
     maven("https://squiddev.cc/maven/")
 }
 
+val graalpyVersion = property("graalpy_version") as String
+
 dependencies {
     compileOnly("net.fabricmc:fabric-loader:$loaderVersion")
     compileOnly("org.slf4j:slf4j-api:2.0.17")
-    
-    // Offline / pre-cached local dependencies from libs/
-    compileOnly(fileTree("libs") { include("*.jar") })
+
+    // Game-side jars (CC: Tweaked, NeoForge bits) from libs/; provided by the server at runtime.
+    val provided = fileTree("libs") {
+        include("cc-tweaked-*.jar", "neoforge-*.jar", "guava-*.jar", "slf4j-*.jar")
+    }
+    compileOnly(provided)
+
+    // Bundled into the AIO jar: the mod is self-contained and needs no other Python mod.
+    implementation("org.graalvm.polyglot:polyglot:$graalpyVersion")
+    implementation("org.graalvm.polyglot:python-community:$graalpyVersion")
+    implementation("org.xerial:sqlite-jdbc:3.46.0.0")
 
     // Test dependencies
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation(fileTree("libs") { include("*.jar") })
+    testRuntimeOnly("org.slf4j:slf4j-simple:2.0.17")
+    testImplementation(provided)
 }
 
 tasks.processResources {
@@ -86,19 +99,49 @@ tasks.jar {
     }
 }
 
+// Service files (Truffle languages, polyglot implementation ...) from all bundled jars, concatenated: a plain
+// merge would keep only one jar's copy and GraalPy would not find its language.
+val mergeServices by tasks.registering {
+    val bundled = configurations.runtimeClasspath
+    val outDir = layout.buildDirectory.dir("merged-services")
+    inputs.files(bundled)
+    outputs.dir(outDir)
+    doLast {
+        val dir = outDir.get().asFile.resolve("META-INF/services")
+        dir.deleteRecursively()
+        dir.mkdirs()
+        val merged = sortedMapOf<String, LinkedHashSet<String>>()
+        bundled.get().files.filter { it.name.endsWith(".jar") }.forEach { jar ->
+            ZipFile(jar).use { zip ->
+                zip.entries().asSequence()
+                    .filter { !it.isDirectory && it.name.startsWith("META-INF/services/") }
+                    .forEach { entry ->
+                        val lines = zip.getInputStream(entry).bufferedReader().readLines()
+                            .map { it.substringBefore('#').trim() }
+                            .filter { it.isNotEmpty() }
+                        merged.getOrPut(entry.name.removePrefix("META-INF/services/")) { linkedSetOf() }.addAll(lines)
+                    }
+            }
+        }
+        merged.forEach { (name, lines) -> dir.resolve(name).writeText(lines.joinToString("\n", postfix = "\n")) }
+    }
+}
+
 tasks.register<Jar>("packageAioJar") {
     group = "build"
-    description = "Packages the All-In-One JAR embedding GraalPy runtime and stdlib"
+    description = "Packages the self-contained All-In-One JAR with GraalPy, its stdlib and sqlite-jdbc"
     archiveClassifier.set("aio")
+    isZip64 = true
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
+    // Earlier sources win on duplicates: our classes and metadata, then the merged service files.
     from(sourceSets.main.get().output)
-    
-    val pyfishJar = file("libs/pyfish-fabric-26.2-1.2.7.jar")
-    if (pyfishJar.exists()) {
-        from(zipTree(pyfishJar)) {
-            exclude("fabric.mod.json")
-            exclude("META-INF/MANIFEST.MF")
-        }
+    from(mergeServices)
+    from({ configurations.runtimeClasspath.get().filter { it.name.endsWith(".jar") }.map { zipTree(it) } }) {
+        exclude(
+            "META-INF/MANIFEST.MF", "META-INF/*.SF", "META-INF/*.RSA", "META-INF/*.DSA", "META-INF/*.EC",
+            "META-INF/services/**", "module-info.class", "META-INF/versions/*/module-info.class"
+        )
     }
 
     manifest {
