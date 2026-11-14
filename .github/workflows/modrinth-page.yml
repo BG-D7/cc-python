@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       images:
-        description: "Also upload docs/images as icon and gallery (script-drawn; see Modrinth rule 6.2)"
+        description: "Also upload docs/images (in-game screenshots) as icon and gallery"
         type: boolean
         default: false
       submit:

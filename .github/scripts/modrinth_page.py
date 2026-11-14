@@ -1,8 +1,8 @@
 """Creates the Modrinth project or syncs its page (summary, docs/modrinth.md, links, disclosures) from the repo.
 
 Run by .github/workflows/modrinth-page.yml with MODRINTH_TOKEN (scopes: create, read and write projects).
-IMAGES=true also uploads docs/images (icon, gallery). They are drawn by a script, so Modrinth rule 6.2 (no images
-derived from generative AI output) may apply: prefer real in-game screenshots uploaded by hand.
+IMAGES=true also uploads docs/images (icon, gallery): real in-game screenshots and a crop of one for the icon, as
+Modrinth rule 6.2 wants (no images derived from generative AI output). Keep them that way when replacing them.
 SUBMIT=true then sends the draft to Modrinth moderation; it needs at least one version uploaded.
 """
 import json
