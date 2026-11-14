@@ -61,7 +61,7 @@
 ## Установка
 
 1. Сервер или клиент Minecraft **26.2** на **Java 25** с **Fabric** или **NeoForge** и **CC: Tweaked 1.120.2**.
-2. Положить `cc-python-<версия>-aio.jar` в `mods/`. Это единственный файл: GraalPy, stdlib и SQLite внутри.
+2. Скачать `cc-python-<версия>-aio.jar` со страницы [Releases](https://github.com/BG-D7/cc-python/releases) и положить в `mods/`. Это единственный файл: GraalPy, stdlib и SQLite внутри.
 3. На первом запуске рантайм (около 25 МБ) распаковывается в `~/.ccpython-cache/`. Дальше `python` доступен
    на всех компьютерах и черепахах.
 
@@ -221,6 +221,8 @@ GraalPy, так что для обновления хватает поменят
 ```
 
 GitHub Actions собирает мод и ресурспак и прогоняет JUnit на каждый push в `main`; файлы лежат в артефактах сборки.
+Релиз: поднять `mod_version` в `gradle.properties` и запушить тег `vX.Y.Z` — workflow `release.yml` соберёт, проверит
+и опубликует GitHub Release с AIO-JAR, ресурспаком и `SHA256SUMS.txt`.
 
 **JUnit** (`PyRunTest`) запускает настоящий GraalPy через Java-заменитель Lua-драйвера и настоящую
 `FileSystem` CC на временной папке. Покрыты:
