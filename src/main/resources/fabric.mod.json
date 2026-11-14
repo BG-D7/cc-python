@@ -3,7 +3,7 @@
   "id": "kik-cc-python",
   "version": "${version}",
   "name": "KiK CC-Python AIO",
-  "description": "Python 3.12 (GraalPy) for CC: Tweaked computers and turtles: sandboxed, with requests, websocket and sqlite3 that follow CC's rules. Self-contained, no other mods needed.",
+  "description": "Python 3.13 (GraalPy) for CC: Tweaked computers and turtles: sandboxed, with requests, websocket and sqlite3 that follow CC's rules. Self-contained, no other mods needed.",
   "authors": [
     "diff"
   ],

@@ -87,6 +87,9 @@ tasks.test {
     systemProperty("polyglotimpl.DisableMultiReleaseCheck", "true")
     systemProperty("org.sqlite.tmpdir", "${System.getProperty("user.home")}/.kik-graalpy-cache/tmp")
     jvmArgs("--enable-native-access=ALL-UNNAMED", "-Xmx2g", "-XX:+UseParallelGC")
+    // Servers run without -ea. GraalPy 25.5's Bytecode DSL interpreter trips one of its own asserts while building the
+    // stack trace of an interrupted script (Context.interrupt), so keep asserts for our code only.
+    jvmArgs("-da:com.oracle...", "-da:org.graalvm...")
 }
 
 tasks.jar {

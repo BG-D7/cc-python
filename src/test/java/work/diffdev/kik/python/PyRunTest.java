@@ -239,6 +239,17 @@ class PyRunTest {
     }
 
     @Test
+    void bundledVersionsMatchRuntime() throws Exception {
+        RuntimeHome.Versions v = RuntimeHome.Versions.BUNDLED;
+        Result r = new Driver().run(PyRun.Mode.CODE, "import sys; print('%d.%d.%d' % sys.version_info[:3])\n");
+        assertTrue(r.ok(), r.error() + "\n" + r.out());
+        assertEquals(v.pythonMajor() + "." + v.pythonMinor() + "." + v.pythonMicro() + "\n", r.out());
+        assertTrue(v.graalMajor() >= 25, v.graalPy());
+        assertTrue(PythonRuntime.home().orElseThrow().coreHome().endsWith("graalpy" + v.graalPy()));
+        assertTrue(Files.isDirectory(PythonRuntime.home().orElseThrow().coreHome()));
+    }
+
+    @Test
     void tracebackOnCyrillicLine() throws Exception {
         Result r = new Driver().run(PyRun.Mode.CODE, "x = 1\nprint('км:', 1 + 'два')\n");
         assertFalse(r.ok());

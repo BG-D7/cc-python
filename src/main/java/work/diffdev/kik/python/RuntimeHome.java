@@ -24,33 +24,63 @@ import java.util.stream.Stream;
  * <p>The resources are listed in {@code META-INF/resources/<name>.files} and read through the class loader, so this
  * works the same from a Fabric or NeoForge mod jar and from the test classpath.
  *
- * <p>Layout: {@code lib/python3.12} (stdlib), {@code lib/graalpy25.0} (core and natives), {@code include/python3.12}.
+ * <p>Layout: {@code lib/pythonX.Y} (stdlib), {@code lib/graalpyA.B} (core and natives), {@code include/pythonX.Y}, with
+ * the versions of the bundled GraalPy ({@link Versions}).
  */
 public record RuntimeHome(Path root, Path coreHome, Path stdlibHome) {
     private static final String RES = "META-INF/resources/";
-    private static final String CORE_DIR = "lib/graalpy25.0";
-    private static final String STDLIB_DIR = "lib/python3.12";
     private static final String MARKER = ".complete";
+
+    /** Python language level and GraalPy release of the bundled runtime. */
+    public record Versions(int pythonMajor, int pythonMinor, int pythonMicro, int graalMajor, int graalMinor) {
+        public static final Versions BUNDLED = read();
+
+        public String python() {
+            return pythonMajor + "." + pythonMinor;
+        }
+
+        public String graalPy() {
+            return graalMajor + "." + graalMinor;
+        }
+
+        /**
+         * GraalPy's own {@code graalpy_versions} resource (python-language jar): one byte per number, offset by 33 --
+         * Python major, minor, micro, then GraalPy major, minor, micro.
+         */
+        private static Versions read() {
+            try (InputStream in = RuntimeHome.class.getClassLoader().getResourceAsStream("graalpy_versions")) {
+                if (in == null) throw new IllegalStateException("graalpy_versions is missing from the mod jar");
+                byte[] b = in.readNBytes(6);
+                if (b.length < 6) throw new IllegalStateException("graalpy_versions is truncated");
+                return new Versions(b[0] - 33, b[1] - 33, b[2] - 33, b[3] - 33, b[4] - 33);
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+    }
 
     public static RuntimeHome prepare(Path cacheDir) throws IOException {
         ClassLoader cl = RuntimeHome.class.getClassLoader();
+        Versions v = Versions.BUNDLED;
+        String coreDir = "lib/graalpy" + v.graalPy();
+        String stdlibDir = "lib/python" + v.python();
         String platform = platform();
         List<Part> parts = new ArrayList<>();
-        parts.add(new Part("libpython", RES + "libpython/", STDLIB_DIR + "/"));
-        parts.add(new Part("libgraalpy", RES + "libgraalpy/", CORE_DIR + "/"));
-        parts.add(new Part("include", RES + "include/", "include/python3.12/"));
+        parts.add(new Part("libpython", RES + "libpython/", stdlibDir + "/"));
+        parts.add(new Part("libgraalpy", RES + "libgraalpy/", coreDir + "/"));
+        parts.add(new Part("include", RES + "include/", "include/python" + v.python() + "/"));
         if (platform != null && cl.getResource(RES + platform + "/native.files") != null) {
             parts.add(new Part(platform + "/native", RES + platform + "/", ""));
         }
 
-        StringBuilder fp = new StringBuilder(platform == null ? "none" : platform);
+        StringBuilder fp = new StringBuilder(platform == null ? "none" : platform).append(':').append(coreDir).append(':').append(stdlibDir);
         for (Part p : parts) {
             String sha = readResource(cl, RES + p.name() + ".sha256");
             if (sha == null) throw new IOException("GraalPy resource " + p.name() + " is missing from the mod jar");
             fp.append(':').append(sha.trim());
         }
         Path root = cacheDir.resolve("graalpy-home").resolve(hash(fp.toString()));
-        RuntimeHome home = new RuntimeHome(root, root.resolve(CORE_DIR), root.resolve(STDLIB_DIR));
+        RuntimeHome home = new RuntimeHome(root, root.resolve(coreDir), root.resolve(stdlibDir));
         if (Files.exists(root.resolve(MARKER))) return home;
 
         Files.createDirectories(root.getParent());

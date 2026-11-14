@@ -132,7 +132,8 @@ public final class PythonAPI implements ILuaAPI {
 
     @LuaFunction
     public final String version() {
-        return "Python 3.12 (GraalPy 25.0) for CC: Tweaked";
+        RuntimeHome.Versions v = RuntimeHome.Versions.BUNDLED;
+        return "Python " + v.python() + " (GraalPy " + v.graalPy() + ") for CC: Tweaked";
     }
 
     private static String text(String lua, PythonConfig config) {

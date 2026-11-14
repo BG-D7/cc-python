@@ -9,7 +9,7 @@ version="${version}"
 displayName="KiK CC: Tweaked Python"
 authors="diff"
 description='''
-Python 3.12 (GraalPy) for CC: Tweaked computers and turtles: sandboxed, with requests, websocket and sqlite3
+Python 3.13 (GraalPy) for CC: Tweaked computers and turtles: sandboxed, with requests, websocket and sqlite3
 that follow CC's rules. Self-contained, no other mods needed.
 '''
 

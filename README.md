@@ -4,11 +4,11 @@
 [![Fabric](https://img.shields.io/badge/Loader-Fabric-green.svg)](https://fabricmc.net/)
 [![NeoForge](https://img.shields.io/badge/Loader-NeoForge-blueviolet.svg)](https://neoforged.net/)
 [![ComputerCraft: Tweaked](https://img.shields.io/badge/CC%3A%20Tweaked-1.120.2-orange.svg)](https://tweaked.cc/)
-[![Python](https://img.shields.io/badge/Python-3.12%20(GraalPy)-yellow.svg)](https://www.graalvm.org/python/)
+[![Python](https://img.shields.io/badge/Python-3.13%20(GraalPy)-yellow.svg)](https://www.graalvm.org/python/)
 [![Java](https://img.shields.io/badge/Java-25%20LTS-red.svg)](https://adoptium.net/)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](LICENSE)
 
-**kik-cc-python** добавляет в компьютеры и черепахи **CC: Tweaked** второй язык — **Python 3.12** (GraalPy 25).
+**kik-cc-python** добавляет в компьютеры и черепахи **CC: Tweaked** второй язык — **Python 3.13** (GraalPy 25.5, ежемесячная линия GraalVM).
 Один гибридный JAR для Minecraft 26.2 работает и на **Fabric**, и на **NeoForge**. Мод самостоятельный: GraalPy,
 стандартная библиотека и SQLite лежат внутри JAR. Других Python-модов и установленного Python не нужно.
 
@@ -53,7 +53,7 @@
 
 ```text
 > python
-Python 3.12 (GraalPy 25.0) for CC: Tweaked
+Python 3.13 (GraalPy 25.5) for CC: Tweaked
 >>> x = 5
 >>> x * 2
 10
@@ -108,7 +108,7 @@ print(python.version(), python.sandboxed())
   - параметры `?` и `:name`, `Row`, транзакции и контекстный менеджер;
   - `executescript`, `iterdump`.
 - `pip` / `micropip`. Пакеты ставятся в `/lib/python/site-packages` на диске компьютера.
-- Стандартная библиотека Python 3.12 без C-расширений: `json`, `re`, `math`, `random`, `datetime`,
+- Стандартная библиотека Python 3.13 без C-расширений: `json`, `re`, `math`, `random`, `datetime`,
   `collections`, `itertools`, `asyncio`, `dataclasses`, `logging`, `pathlib`, `zipfile` и т. д.
 
 Общие для всего сервера модули и пакеты кладутся в `config/kik-cc-python/libs/`. В Python эта папка видна как
@@ -157,6 +157,14 @@ print(python.version(), python.sandboxed())
 
 Нужен **JDK 25**. CC: Tweaked и NeoForge подключаются как `compileOnly` из `libs/`. GraalPy и sqlite-jdbc
 берутся из Maven.
+
+GraalPy идёт по ежемесячной линии GraalVM (25.1, 25.2, …; каждый релиз заменяет предыдущий). Версия задаётся в
+`gradle.properties` (`graalpy_version`). Пути рантайма (`lib/graalpyA.B`, `lib/pythonX.Y`) и баннер берутся из самого
+GraalPy, так что для обновления хватает поменять версию и прогнать тесты. Обычный OpenJDK (как у серверов Minecraft)
+исполняет GraalPy без JIT-компилятора Truffle: так было и на 25.0.
+
+Тесты запускаются без `-ea` для пакетов GraalVM (`-da:com.oracle... -da:org.graalvm...`), как на сервере: в 25.5
+внутренний assert интерпретатора срабатывает при Ctrl+T (`Context.interrupt`), без `-ea` всё работает.
 
 ```bash
 ./gradlew packageAioJar        # build/libs/kik-cc-python-<версия>-aio.jar (~100 МБ, всё внутри)
