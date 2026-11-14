@@ -172,3 +172,32 @@ tasks.register<Zip>("packageResourcePack") {
     destinationDirectory.set(layout.buildDirectory.dir("libs"))
     from("resourcepack")
 }
+
+// Release notes come from the CHANGELOG.md section "## [<mod_version>] — <date>".
+fun changelogFor(releaseVersion: String): String {
+    val lines = rootProject.file("CHANGELOG.md").readLines()
+    val heading = "## [$releaseVersion]"
+    val start = lines.indexOfFirst { it == heading || it.startsWith("$heading ") }
+    check(start >= 0) { "CHANGELOG.md is missing heading: $heading" }
+
+    return lines.drop(start + 1)
+        .takeWhile { !it.startsWith("## [") }
+        .joinToString("\n")
+        .trim()
+        .also { check(it.isNotBlank()) { "CHANGELOG.md section is empty: $heading" } }
+}
+
+// The release workflow passes -PreleaseModVersion=<tag without v>; writes build/release-notes.md.
+tasks.register("verifyReleaseVersion") {
+    group = "verification"
+    description = "Checks that the release tag matches mod_version and CHANGELOG.md has its section"
+    val notes = layout.buildDirectory.file("release-notes.md")
+    outputs.file(notes)
+    outputs.upToDateWhen { false }
+    doLast {
+        val tagVersion = providers.gradleProperty("releaseModVersion").orNull
+            ?: error("Pass -PreleaseModVersion=<version from v<version> tag>")
+        check(tagVersion == modVersion) { "Tag version $tagVersion does not match mod_version=$modVersion" }
+        notes.get().asFile.writeText(changelogFor(tagVersion) + "\n")
+    }
+}

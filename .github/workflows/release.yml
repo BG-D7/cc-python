@@ -1,45 +1,67 @@
 name: Release
 
-# Push a tag vX.Y.Z (matching mod_version in gradle.properties) to build, test and publish a GitHub Release.
+# Push a tag vX.Y.Z (or vX.Y.Z-beta.N / -rc.N) matching mod_version in gradle.properties and a
+# "## [X.Y.Z]" section in CHANGELOG.md: the workflow builds, tests and publishes a GitHub Release.
 on:
   push:
-    tags: [ "v*" ]
+    tags:
+      - "v*"
 
 permissions:
-  contents: write
+  contents: write      # for creating GitHub releases
 
 jobs:
   release:
-    name: Build & Publish Release
+    name: Release
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Check tag matches mod_version
-        run: |
-          version=$(sed -n 's/^mod_version=//p' gradle.properties)
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match mod_version=$version"
-            exit 1
-          fi
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Java 25
-        uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with:
-          distribution: 'oracle'
-          java-version: '25'
-          cache: 'gradle'
+          java-version: "25"
+          distribution: "oracle"
 
-      - name: Build Mod & Run Tests
-        run: ./gradlew build packageAioJar packageResourcePack --no-daemon --stacktrace
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
-      - name: Publish Release
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Validate tag and build
         env:
-          GH_TOKEN: ${{ github.token }}
+          MOD_VERSION: ${{ github.ref_name }}
         run: |
-          cd build/libs
-          sha256sum *-aio.jar *.zip > SHA256SUMS.txt
-          gh release create "$GITHUB_REF_NAME" --title "CC: Python ${GITHUB_REF_NAME#v}" --generate-notes \
-            --notes "Install \`cc-python-*-aio.jar\` into \`mods/\` (Minecraft 26.2, Fabric or NeoForge, CC: Tweaked 1.120.2, Java 25). \`cc-python-cyrillic-*.zip\` is the optional Cyrillic terminal font resource pack (CCPL)." \
-            *-aio.jar *.zip SHA256SUMS.txt
+          MOD_VERSION="${MOD_VERSION#v}"
+          ./gradlew verifyReleaseVersion build packageAioJar packageResourcePack --no-daemon \
+            -PreleaseModVersion="$MOD_VERSION"
+
+      - name: Select release artifacts
+        run: |
+          mkdir -p release-artifacts
+          shopt -s nullglob
+          select_one() {
+            local what="$1"; shift
+            local matches=( "$@" )
+            if (( ${#matches[@]} != 1 )); then
+              printf 'Expected one %s, found %s: %s\n' "$what" "${#matches[@]}" "${matches[*]:-none}" >&2
+              exit 1
+            fi
+            cp "${matches[0]}" release-artifacts/
+          }
+          select_one "AIO jar" build/libs/cc-python-*-aio.jar
+          select_one "resource pack" build/libs/cc-python-cyrillic-*.zip
+          (cd release-artifacts && sha256sum * > SHA256SUMS.txt)
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          name: "CC: Python ${{ github.ref_name }}"
+          body_path: build/release-notes.md
+          files: release-artifacts/*
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}

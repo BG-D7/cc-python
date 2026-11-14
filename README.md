@@ -221,8 +221,9 @@ GraalPy, так что для обновления хватает поменят
 ```
 
 GitHub Actions собирает мод и ресурспак и прогоняет JUnit на каждый push в `main`; файлы лежат в артефактах сборки.
-Релиз: поднять `mod_version` в `gradle.properties` и запушить тег `vX.Y.Z` — workflow `release.yml` соберёт, проверит
-и опубликует GitHub Release с AIO-JAR, ресурспаком и `SHA256SUMS.txt`.
+Релиз: поднять `mod_version` в `gradle.properties` (SemVer; предрелизы `X.Y.Z-beta.N`, `-rc.N`), добавить раздел
+`## [X.Y.Z] — дата` в [CHANGELOG.md](CHANGELOG.md) и запушить тег `vX.Y.Z`. Workflow `release.yml` сверит тег с
+`mod_version` и changelog, соберёт, прогонит тесты и опубликует GitHub Release с AIO-JAR, ресурспаком и `SHA256SUMS.txt`.
 
 **JUnit** (`PyRunTest`) запускает настоящий GraalPy через Java-заменитель Lua-драйвера и настоящую
 `FileSystem` CC на временной папке. Покрыты:
