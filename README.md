@@ -1,16 +1,16 @@
 # CC: Python
 
-[![Minecraft](https://img.shields.io/badge/Minecraft-26.2-blue.svg)](https://minecraft.net/)
+[![Minecraft](https://img.shields.io/badge/Minecraft-26.2%20%7C%2026.3-blue.svg)](https://minecraft.net/)
 [![Fabric](https://img.shields.io/badge/Loader-Fabric-green.svg)](https://fabricmc.net/)
 [![NeoForge](https://img.shields.io/badge/Loader-NeoForge-blueviolet.svg)](https://neoforged.net/)
-[![ComputerCraft: Tweaked](https://img.shields.io/badge/CC%3A%20Tweaked-1.120.2-orange.svg)](https://tweaked.cc/)
+[![ComputerCraft: Tweaked](https://img.shields.io/badge/CC%3A%20Tweaked-1.120%20%7C%201.121-orange.svg)](https://tweaked.cc/)
 [![Python](https://img.shields.io/badge/Python-3.13%20(GraalPy)-yellow.svg)](https://www.graalvm.org/python/)
 [![Java](https://img.shields.io/badge/Java-25%20LTS-red.svg)](https://adoptium.net/)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](LICENSE)
 [![CI](https://github.com/BG-D7/cc-python/actions/workflows/build.yml/badge.svg)](https://github.com/BG-D7/cc-python/actions/workflows/build.yml)
 
 **CC: Python** добавляет в компьютеры и черепахи **CC: Tweaked** второй язык — **Python 3.13** (GraalPy 25.5).
-Один гибридный JAR для Minecraft 26.2 работает и на **Fabric**, и на **NeoForge**. Мод самостоятельный: GraalPy,
+Один гибридный JAR для Minecraft 26.2 и 26.3 работает и на **Fabric**, и на **NeoForge**. Мод самостоятельный: GraalPy,
 стандартная библиотека и SQLite лежат внутри JAR. Других Python-модов и установленного Python не нужно.
 
 Мод вырос из авторского курса программирования на CC: Tweaked «Код и Космос» и рассчитан на учебные сервера:
@@ -60,7 +60,8 @@
 
 ## Установка
 
-1. Сервер или клиент Minecraft **26.2** на **Java 25** с **Fabric** или **NeoForge** и **CC: Tweaked 1.120.2**.
+1. Сервер или клиент Minecraft **26.3** с **CC: Tweaked 1.121.0** или **26.2** с **CC: Tweaked 1.120.x**, на **Java 25**,
+   с **Fabric** или **NeoForge**.
 2. Скачать `cc-python-<версия>-aio.jar` со страницы [Releases](https://github.com/BG-D7/cc-python/releases) и положить в `mods/`. Это единственный файл: GraalPy, stdlib и SQLite внутри.
 3. На первом запуске рантайм (около 25 МБ) распаковывается в `~/.ccpython-cache/`. Дальше `python` доступен
    на всех компьютерах и черепахах.

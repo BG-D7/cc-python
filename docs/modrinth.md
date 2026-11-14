@@ -1,5 +1,5 @@
 **CC: Python** adds a second language to [CC: Tweaked](https://modrinth.com/mod/cc-tweaked) computers and turtles: **Python 3.13** (GraalPy 25.5).
-One jar for Minecraft 26.2 runs on both **Fabric** and **NeoForge**. It is self-contained: GraalPy, the standard
+One jar for Minecraft 26.2 and 26.3 runs on both **Fabric** and **NeoForge**. It is self-contained: GraalPy, the standard
 library and SQLite are inside, so you need no other Python mods and no Python installed.
 
 It grew out of a CC: Tweaked programming course and is made for classrooms and community servers.
@@ -22,7 +22,8 @@ It grew out of a CC: Tweaked programming course and is made for classrooms and c
 
 ## Installation
 
-1. Minecraft **26.2** on **Java 25**, **Fabric** or **NeoForge**, with **CC: Tweaked 1.120.2**.
+1. Minecraft **26.3** with **CC: Tweaked 1.121.0**, or **26.2** with **CC: Tweaked 1.120.x**; **Java 25**, **Fabric**
+   or **NeoForge**.
 2. Put `cc-python-<version>-aio.jar` into `mods/`. That's the only file.
 3. On first start the runtime (~25 MB) is unpacked to `~/.ccpython-cache/`. Then `python` works on every computer
    and turtle.

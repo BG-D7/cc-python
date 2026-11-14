@@ -65,6 +65,7 @@ jobs:
 
           props = dict(l.split("=", 1) for l in open("gradle.properties").read().splitlines() if "=" in l and not l.startswith("#"))
           mod_version, mc = props["mod_version"].strip(), props["minecraft_version"].strip()
+          game_versions = [v.strip() for v in props.get("minecraft_versions", mc).split(",")]
           if tag != "v" + mod_version:
               sys.exit(f"Tag {tag} does not match mod_version={mod_version}")
           version_number = f"{mod_version}+{mc}"
@@ -92,7 +93,7 @@ jobs:
               "version_number": version_number,
               "changelog": changelog,
               "dependencies": [{"project_id": os.environ["CC_TWEAKED_PROJECT"], "dependency_type": "required"}],
-              "game_versions": [mc],
+              "game_versions": game_versions,
               "version_type": "beta" if re.search(r"-(alpha|beta|rc)", mod_version) else "release",
               "loaders": ["fabric", "neoforge"],
               "environment": "server_only",

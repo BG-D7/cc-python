@@ -24,7 +24,7 @@ side="BOTH"
 [[dependencies.ccpython]]
 modId="minecraft"
 type="required"
-versionRange="[${minecraft_version},26.3)"
+versionRange="${minecraft_range}"
 ordering="NONE"
 side="BOTH"
 

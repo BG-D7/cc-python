@@ -126,7 +126,7 @@ public final class PythonConfig {
     }
 
     public boolean httpEnabled() {
-        return httpEnabled.equals("inherit") ? CoreConfig.httpEnabled : Boolean.parseBoolean(httpEnabled);
+        return httpEnabled.equals("inherit") ? CCHttpConfig.enabled() : Boolean.parseBoolean(httpEnabled);
     }
 
     public boolean websocketEnabled() {
@@ -135,7 +135,7 @@ public final class PythonConfig {
     }
 
     public List<AddressRule> httpRules() {
-        return httpRules != null ? httpRules : CoreConfig.httpRules;
+        return httpRules != null ? httpRules : CCHttpConfig.rules();
     }
 
     static List<AddressRule> parseRules(String spec) {

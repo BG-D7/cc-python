@@ -11,6 +11,14 @@ val modGroup = property("mod_group") as String
 val minecraftVersion = property("minecraft_version") as String
 val loaderVersion = property("loader_version") as String
 val ccVersion = property("cc_version") as String
+val minecraftVersions = (property("minecraft_versions") as String).split(",").map { it.trim() }
+
+check(minecraftVersions.last() == minecraftVersion) { "minecraft_versions must end with minecraft_version=$minecraftVersion" }
+// Fabric: any of the listed versions (~26.2 = 26.2.x); NeoForge: from the first up to the next after the last.
+val fabricMinecraftDep = minecraftVersions.joinToString(", ", "[", "]") { "\"~$it\"" }
+val neoForgeMinecraftRange = minecraftVersions.last().split(".").let { (major, minor) ->
+    "[${minecraftVersions.first()},$major.${minor.toInt() + 1})"
+}
 
 group = modGroup
 version = "$modVersion+$minecraftVersion"
@@ -62,13 +70,13 @@ dependencies {
 
 tasks.processResources {
     inputs.property("version", project.version)
-    inputs.property("minecraft_version", minecraftVersion)
+    inputs.property("minecraft_versions", minecraftVersions)
     inputs.property("loader_version", loaderVersion)
 
     filesMatching("fabric.mod.json") {
         expand(
             "version" to project.version,
-            "minecraft_version" to minecraftVersion,
+            "minecraft_dependency" to fabricMinecraftDep,
             "loader_version" to loaderVersion
         )
     }
@@ -76,7 +84,7 @@ tasks.processResources {
     filesMatching("META-INF/neoforge.mods.toml") {
         expand(
             "version" to project.version,
-            "minecraft_version" to minecraftVersion
+            "minecraft_range" to neoForgeMinecraftRange
         )
     }
 }

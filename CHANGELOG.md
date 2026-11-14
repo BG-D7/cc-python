@@ -3,6 +3,18 @@
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), версии — [SemVer](https://semver.org/lang/ru/).
 Тег релиза `vX.Y.Z` совпадает с `mod_version`; артефакт называется `cc-python-X.Y.Z+<версия Minecraft>`.
 
+## [1.1.0] — 2026-11-14
+
+Совместимость с актуальным CC: Tweaked. Один JAR для Minecraft 26.2 (CC: Tweaked 1.120.x) и 26.3 (CC: Tweaked 1.121.0),
+Fabric и NeoForge.
+
+### Изменено
+- Сборка против CC: Tweaked 1.121.0 для Minecraft 26.3; Minecraft 26.2 с CC: Tweaked 1.120.x поддерживается тем же JAR.
+
+### Исправлено
+- `requests` и `websocket` с `http.enabled`/`http.rules = inherit` на CC: Tweaked 1.121.0: настройки HTTP переехали
+  из `CoreConfig` в конфиг CC, мод читает их на новом месте (на 1.120.x — на старом).
+
 ## [1.0.0] — 2026-11-14
 
 Первый публичный релиз. Minecraft 26.2, Fabric и NeoForge (один JAR), CC: Tweaked 1.120.2, Java 25.

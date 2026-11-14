@@ -552,6 +552,7 @@ class PyRunTest {
                 print('denied', e)
             """);
         assertTrue(r.ok(), r.error() + "\n" + r.out());
-        assertTrue(r.out().startsWith("denied"), r.out());
+        // CC's default rules ("deny $private"), inherited without Minecraft loaded; not just a refused connection.
+        assertTrue(r.out().startsWith("denied") && r.out().contains("not permitted"), r.out());
     }
 }
