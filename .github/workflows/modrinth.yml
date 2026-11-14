@@ -1,0 +1,111 @@
+name: Modrinth
+
+# Uploads the AIO jar of an existing GitHub Release to Modrinth: called by release.yml after the release, or by hand
+# (Actions → Modrinth → Run workflow) for an older tag. Needs the MODRINTH_TOKEN repository secret, a Modrinth
+# personal access token with "Read projects" and "Create versions". Skips quietly without it, and skips a version that
+# is already on Modrinth.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+    secrets:
+      MODRINTH_TOKEN:
+        required: false
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. v1.0.0"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  MODRINTH_PROJECT: cc-python
+  CC_TWEAKED_PROJECT: gu7yAYhd    # modrinth.com/mod/cc-tweaked
+
+jobs:
+  modrinth:
+    name: Publish to Modrinth
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Download release jar
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: gh release download "$TAG" --pattern 'cc-python-*-aio.jar' --dir upload
+
+      - name: Upload version
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          if [ -z "$MODRINTH_TOKEN" ]; then
+            echo "::warning::MODRINTH_TOKEN is not set, skipping Modrinth"
+            exit 0
+          fi
+          python3 - <<'EOF'
+          import glob, json, os, re, sys, urllib.error, urllib.request, uuid
+
+          api, token, tag = "https://api.modrinth.com/v2", os.environ["MODRINTH_TOKEN"], os.environ["TAG"]
+          headers = {"Authorization": token, "User-Agent": "BG-D7/cc-python release workflow"}
+
+          def call(path, data=None, content_type=None):
+              h = dict(headers, **({"Content-Type": content_type} if content_type else {}))
+              with urllib.request.urlopen(urllib.request.Request(api + path, data=data, headers=h)) as r:
+                  return json.load(r)
+
+          props = dict(l.split("=", 1) for l in open("gradle.properties").read().splitlines() if "=" in l and not l.startswith("#"))
+          mod_version, mc = props["mod_version"].strip(), props["minecraft_version"].strip()
+          if tag != "v" + mod_version:
+              sys.exit(f"Tag {tag} does not match mod_version={mod_version}")
+          version_number = f"{mod_version}+{mc}"
+
+          project = call(f"/project/{os.environ['MODRINTH_PROJECT']}")
+          if any(v["version_number"] == version_number for v in call(f"/project/{project['id']}/version")):
+              print(f"{version_number} is already on Modrinth"); sys.exit(0)
+
+          lines = open("CHANGELOG.md", encoding="utf-8").read().splitlines()
+          heading = f"## [{mod_version}]"
+          start = next(i for i, l in enumerate(lines) if l == heading or l.startswith(heading + " "))
+          section = []
+          for l in lines[start + 1:]:
+              if l.startswith("## ["): break
+              section.append(l)
+          changelog = "\n".join(section).strip()
+          changelog += f"\n\nFull release: https://github.com/BG-D7/cc-python/releases/tag/{tag}"
+
+          (jar,) = glob.glob("upload/cc-python-*-aio.jar")
+          data = {
+              "project_id": project["id"],
+              "name": f"CC: Python {mod_version}",
+              "version_number": version_number,
+              "changelog": changelog,
+              "dependencies": [{"project_id": os.environ["CC_TWEAKED_PROJECT"], "dependency_type": "required"}],
+              "game_versions": [mc],
+              "version_type": "beta" if re.search(r"-(alpha|beta|rc)", mod_version) else "release",
+              "loaders": ["fabric", "neoforge"],
+              "featured": True,
+              "status": "listed",
+              "file_parts": ["jar"],
+              "primary_file": "jar",
+          }
+          b = uuid.uuid4().hex
+          body = (f'--{b}\r\nContent-Disposition: form-data; name="data"\r\nContent-Type: application/json\r\n\r\n'
+                  + json.dumps(data) + f'\r\n--{b}\r\nContent-Disposition: form-data; name="jar"; '
+                  f'filename="{os.path.basename(jar)}"\r\nContent-Type: application/java-archive\r\n\r\n').encode()
+          body += open(jar, "rb").read() + f"\r\n--{b}--\r\n".encode()
+          try:
+              v = call("/version", body, f"multipart/form-data; boundary={b}")
+          except urllib.error.HTTPError as e:
+              sys.exit(f"Modrinth: HTTP {e.code} {e.read().decode(errors='replace')}")
+          print(f"Published {v['version_number']}: https://modrinth.com/mod/{project['slug']}/version/{v['id']}")
+          EOF
