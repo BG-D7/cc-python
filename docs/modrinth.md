@@ -42,8 +42,8 @@ True
 
 ## Cyrillic font
 
-CC's default font has no Cyrillic. The optional resource pack `cc-python-cyrillic-<version>.zip` from
-[GitHub Releases](https://github.com/BG-D7/cc-python/releases) adds Cyrillic at CP1251 positions; a server can push it
+CC's default font has no Cyrillic. The optional resource pack `cc-python-cyrillic-<version>.zip` (attached to each
+version here and on [GitHub Releases](https://github.com/BG-D7/cc-python/releases)) adds Cyrillic at CP1251 positions; a server can push it
 with `resource-pack=` in `server.properties`. Without it, set `text.encoding = latin1` in `config/ccpython/config.properties`.
 The font is based on the CC: Tweaked font and the [CCCyrillic](https://modrinth.com/resourcepack/cccyrillic) glyphs
 and is licensed under the CCPL, separately from the mod.

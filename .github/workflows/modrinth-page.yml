@@ -1,0 +1,28 @@
+name: Modrinth page
+
+# Creates the Modrinth project or syncs its page from docs/modrinth.md and docs/images (Actions → Run workflow).
+# Needs the MODRINTH_TOKEN secret with "Create projects", "Read projects" and "Write projects".
+on:
+  workflow_dispatch:
+    inputs:
+      submit:
+        description: "Submit the draft for Modrinth review (needs an uploaded version)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  page:
+    name: Sync Modrinth page
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Create or update the project
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          SUBMIT: ${{ inputs.submit }}
+        run: python3 .github/scripts/modrinth_page.py

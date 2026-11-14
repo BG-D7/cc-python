@@ -1,6 +1,6 @@
 name: Modrinth
 
-# Uploads the AIO jar of an existing GitHub Release to Modrinth: called by release.yml after the release, or by hand
+# Uploads the AIO jar (and the font pack as an optional resource pack) of an existing GitHub Release to Modrinth: called by release.yml after the release, or by hand
 # (Actions → Modrinth → Run workflow) for an older tag. Needs the MODRINTH_TOKEN repository secret, a Modrinth
 # personal access token with "Read projects" and "Create versions". Skips quietly without it, and skips a version that
 # is already on Modrinth.
@@ -41,7 +41,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
-        run: gh release download "$TAG" --pattern 'cc-python-*-aio.jar' --dir upload
+        run: gh release download "$TAG" --pattern 'cc-python-*-aio.jar' --pattern 'cc-python-cyrillic-*.zip' --dir upload
 
       - name: Upload version
         env:
@@ -84,6 +84,8 @@ jobs:
           changelog += f"\n\nFull release: https://github.com/BG-D7/cc-python/releases/tag/{tag}"
 
           (jar,) = glob.glob("upload/cc-python-*-aio.jar")
+          files = {"jar": (jar, "application/java-archive")}
+          files.update({"font": (f, "application/zip") for f in glob.glob("upload/cc-python-cyrillic-*.zip")})
           data = {
               "project_id": project["id"],
               "name": f"CC: Python {mod_version}",
@@ -93,16 +95,20 @@ jobs:
               "game_versions": [mc],
               "version_type": "beta" if re.search(r"-(alpha|beta|rc)", mod_version) else "release",
               "loaders": ["fabric", "neoforge"],
+              "environment": "server_only",
               "featured": True,
               "status": "listed",
-              "file_parts": ["jar"],
+              "file_parts": list(files),
               "primary_file": "jar",
+              "file_types": {"font": "optional-resource-pack"} if "font" in files else {},
           }
           b = uuid.uuid4().hex
           body = (f'--{b}\r\nContent-Disposition: form-data; name="data"\r\nContent-Type: application/json\r\n\r\n'
-                  + json.dumps(data) + f'\r\n--{b}\r\nContent-Disposition: form-data; name="jar"; '
-                  f'filename="{os.path.basename(jar)}"\r\nContent-Type: application/java-archive\r\n\r\n').encode()
-          body += open(jar, "rb").read() + f"\r\n--{b}--\r\n".encode()
+                  + json.dumps(data) + '\r\n').encode()
+          for part, (path, ctype) in files.items():
+              body += (f'--{b}\r\nContent-Disposition: form-data; name="{part}"; filename="{os.path.basename(path)}"\r\n'
+                       f'Content-Type: {ctype}\r\n\r\n').encode() + open(path, "rb").read() + b"\r\n"
+          body += f"--{b}--\r\n".encode()
           try:
               v = call("/version", body, f"multipart/form-data; boundary={b}")
           except urllib.error.HTTPError as e:
